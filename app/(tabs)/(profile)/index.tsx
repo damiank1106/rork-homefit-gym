@@ -9,6 +9,7 @@ import {
   TextInput,
   Keyboard,
   TouchableWithoutFeedback,
+  KeyboardTypeOptions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -202,7 +203,7 @@ export default function ProfileScreen() {
     returnKeyType = 'default',
     onSubmitEditing,
     blurOnSubmit = false,
-    keyboardType = 'number-pad',
+    keyboardType = 'default',
   }: {
     icon: React.ElementType;
     label: string;
@@ -214,7 +215,7 @@ export default function ProfileScreen() {
     returnKeyType?: 'default' | 'done' | 'next' | 'go';
     onSubmitEditing?: () => void;
     blurOnSubmit?: boolean;
-    keyboardType?: 'number-pad' | 'decimal-pad';
+    keyboardType?: KeyboardTypeOptions;
   }) => (
     <View style={styles.inputCard}>
       <View style={styles.inputIconContainer}>
@@ -232,7 +233,6 @@ export default function ProfileScreen() {
             keyboardType={keyboardType}
             returnKeyType={returnKeyType}
             blurOnSubmit={blurOnSubmit}
-            inputMode="decimal"
             ref={inputRef}
             onSubmitEditing={onSubmitEditing}
           />
@@ -402,10 +402,9 @@ export default function ProfileScreen() {
                               onChangeText={setHeightInput}
                               placeholder="Enter height"
                               placeholderTextColor={Colors.textLight}
-                              keyboardType="decimal-pad"
+                              keyboardType="default"
                               returnKeyType="default"
                               blurOnSubmit={false}
-                              inputMode="decimal"
                               ref={heightCmRef}
                             />
                             <Text style={styles.inputSuffix}>cm</Text>
@@ -420,10 +419,9 @@ export default function ProfileScreen() {
                                 onChangeText={setHeightFeetInput}
                                 placeholder="0"
                                 placeholderTextColor={Colors.textLight}
-                                keyboardType="number-pad"
+                                keyboardType="default"
                                 returnKeyType="default"
                                 blurOnSubmit={false}
-                                inputMode="decimal"
                                 ref={heightFeetRef}
                               />
                             </View>
@@ -435,10 +433,9 @@ export default function ProfileScreen() {
                                 onChangeText={setHeightInchesInput}
                                 placeholder="0"
                                 placeholderTextColor={Colors.textLight}
-                                keyboardType="decimal-pad"
+                                keyboardType="default"
                                 returnKeyType="default"
                                 blurOnSubmit={false}
-                                inputMode="decimal"
                                 ref={heightInchesRef}
                               />
                             </View>
@@ -459,10 +456,9 @@ export default function ProfileScreen() {
                             onChangeText={setWeightInput}
                             placeholder="Enter weight"
                             placeholderTextColor={Colors.textLight}
-                            keyboardType="decimal-pad"
+                            keyboardType="default"
                             returnKeyType="default"
                             blurOnSubmit={false}
-                            inputMode="decimal"
                             ref={weightRef}
                           />
                           <View style={styles.unitToggle}>
