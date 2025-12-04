@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useState, useCallback } from 'react';
+import React, { useRef, useEffect, useState, useCallback, useMemo } from 'react';
 import {
   View,
   Text,
@@ -10,6 +10,7 @@ import {
   Keyboard,
   TouchableWithoutFeedback,
   KeyboardTypeOptions,
+  Modal,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -61,7 +62,6 @@ const calculateAge = (birthday: string): number | null => {
 
 export default function ProfileScreen() {
   const fadeAnim = useRef(new Animated.Value(0)).current;
-  const birthdayRef = useRef<TextInput>(null);
   const heightCmRef = useRef<TextInput>(null);
   const heightFeetRef = useRef<TextInput>(null);
   const heightInchesRef = useRef<TextInput>(null);
@@ -76,6 +76,10 @@ export default function ProfileScreen() {
   const [heightInchesInput, setHeightInchesInput] = useState('');
   const [heightUnit, setHeightUnit] = useState<HeightUnit>('cm');
   const [weightInput, setWeightInput] = useState('');
+  const [isBirthdayPickerVisible, setIsBirthdayPickerVisible] = useState(false);
+  const [tempDay, setTempDay] = useState<number>(new Date().getDate());
+  const [tempMonth, setTempMonth] = useState<number>(new Date().getMonth() + 1);
+  const [tempYear, setTempYear] = useState<number>(new Date().getFullYear());
 
   useEffect(() => {
     Animated.timing(fadeAnim, {
@@ -102,6 +106,14 @@ export default function ProfileScreen() {
       };
       setProfile(normalizedProfile);
       setBirthdayInput(stored.birthday ?? '');
+      if (stored.birthday) {
+        const birthDate = new Date(stored.birthday);
+        if (!isNaN(birthDate.getTime())) {
+          setTempDay(birthDate.getDate());
+          setTempMonth(birthDate.getMonth() + 1);
+          setTempYear(birthDate.getFullYear());
+        }
+      }
       const resolvedUnit = stored.heightUnit ?? 'cm';
       setHeightUnit(resolvedUnit);
 
@@ -281,6 +293,32 @@ export default function ProfileScreen() {
       : 'Enter a valid date (YYYY-MM-DD)'
     : 'Add your birth date to calculate age';
 
+  const daysInMonth = useMemo(() => {
+    return new Date(tempYear, tempMonth, 0).getDate();
+  }, [tempMonth, tempYear]);
+
+  useEffect(() => {
+    if (tempDay > daysInMonth) {
+      setTempDay(daysInMonth);
+    }
+  }, [daysInMonth, tempDay]);
+
+  const openBirthdayPicker = useCallback(() => {
+    const existingDate = birthdayInput ? new Date(birthdayInput) : null;
+    const validDate = existingDate && !isNaN(existingDate.getTime()) ? existingDate : new Date();
+
+    setTempDay(validDate.getDate());
+    setTempMonth(validDate.getMonth() + 1);
+    setTempYear(validDate.getFullYear());
+    setIsBirthdayPickerVisible(true);
+  }, [birthdayInput]);
+
+  const saveBirthday = useCallback(() => {
+    const formatted = `${tempYear}-${String(tempMonth).padStart(2, '0')}-${String(tempDay).padStart(2, '0')}`;
+    setBirthdayInput(formatted);
+    setIsBirthdayPickerVisible(false);
+  }, [tempDay, tempMonth, tempYear]);
+
   const EquipmentItem = ({ equipment }: { equipment: typeof EQUIPMENT[0] }) => {
     const isSelected = profile.selectedEquipment.includes(equipment.id);
     const scaleAnim = useRef(new Animated.Value(1)).current;
@@ -347,6 +385,110 @@ export default function ProfileScreen() {
       locations={[0, 0.3, 0.6]}
       style={styles.gradient}
     >
+      <Modal
+        visible={isBirthdayPickerVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setIsBirthdayPickerVisible(false)}
+      >
+        <View style={styles.modalBackdrop}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Select your birthday</Text>
+            <View style={styles.pickerColumns}>
+              <View style={styles.pickerColumn}>
+                <Text style={styles.pickerLabel}>Day</Text>
+                <ScrollView contentContainerStyle={styles.pickerList} showsVerticalScrollIndicator={false}>
+                  {Array.from({ length: daysInMonth }, (_, index) => index + 1).map(day => (
+                    <Pressable
+                      key={day}
+                      onPress={() => setTempDay(day)}
+                      style={[styles.pickerOption, tempDay === day && styles.pickerOptionSelected]}
+                    >
+                      <Text
+                        style={[styles.pickerOptionText, tempDay === day && styles.pickerOptionTextSelected]}
+                      >
+                        {day}
+                      </Text>
+                    </Pressable>
+                  ))}
+                </ScrollView>
+              </View>
+
+              <View style={styles.pickerColumn}>
+                <Text style={styles.pickerLabel}>Month</Text>
+                <ScrollView contentContainerStyle={styles.pickerList} showsVerticalScrollIndicator={false}>
+                  {[
+                    'January',
+                    'February',
+                    'March',
+                    'April',
+                    'May',
+                    'June',
+                    'July',
+                    'August',
+                    'September',
+                    'October',
+                    'November',
+                    'December',
+                  ].map((monthName, index) => {
+                    const monthNumber = index + 1;
+                    return (
+                      <Pressable
+                        key={monthName}
+                        onPress={() => setTempMonth(monthNumber)}
+                        style={[
+                          styles.pickerOption,
+                          tempMonth === monthNumber && styles.pickerOptionSelected,
+                        ]}
+                      >
+                        <Text
+                          style={[
+                            styles.pickerOptionText,
+                            tempMonth === monthNumber && styles.pickerOptionTextSelected,
+                          ]}
+                        >
+                          {monthName}
+                        </Text>
+                      </Pressable>
+                    );
+                  })}
+                </ScrollView>
+              </View>
+
+              <View style={styles.pickerColumn}>
+                <Text style={styles.pickerLabel}>Year</Text>
+                <ScrollView contentContainerStyle={styles.pickerList} showsVerticalScrollIndicator={false}>
+                  {Array.from({ length: 100 }, (_, index) => new Date().getFullYear() - index).map(year => (
+                    <Pressable
+                      key={year}
+                      onPress={() => setTempYear(year)}
+                      style={[styles.pickerOption, tempYear === year && styles.pickerOptionSelected]}
+                    >
+                      <Text
+                        style={[styles.pickerOptionText, tempYear === year && styles.pickerOptionTextSelected]}
+                      >
+                        {year}
+                      </Text>
+                    </Pressable>
+                  ))}
+                </ScrollView>
+              </View>
+            </View>
+
+            <View style={styles.modalActions}>
+              <Pressable
+                style={[styles.modalButton, styles.modalButtonSecondary]}
+                onPress={() => setIsBirthdayPickerVisible(false)}
+              >
+                <Text style={styles.modalButtonTextSecondary}>Cancel</Text>
+              </Pressable>
+              <Pressable style={[styles.modalButton, styles.modalButtonPrimary]} onPress={saveBirthday}>
+                <Text style={styles.modalButtonTextPrimary}>Save</Text>
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
       <SafeAreaView style={styles.container} edges={['top']}>
         <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
           <View style={{ flex: 1 }}>
@@ -379,18 +521,25 @@ export default function ProfileScreen() {
                 <View style={styles.section}>
                   <Text style={styles.sectionTitle}>Your Details</Text>
                   <View style={styles.inputsContainer}>
-                    <InputCard
-                      icon={Calendar}
-                      label="Birthday"
-                      value={birthdayInput}
-                      onChangeText={setBirthdayInput}
-                      placeholder="YYYY-MM-DD"
-                      inputRef={birthdayRef}
-                      returnKeyType="next"
-                      blurOnSubmit={false}
-                      keyboardType="numbers-and-punctuation"
-                      helperText={ageHelperText}
-                    />
+                    <View style={styles.inputCard}>
+                      <View style={styles.inputIconContainer}>
+                        <Calendar size={20} color={Colors.primary} strokeWidth={2} />
+                      </View>
+                      <View style={styles.inputContent}>
+                        <Text style={styles.inputLabel}>Birthday</Text>
+                        <Pressable
+                          style={styles.dateSelector}
+                          onPress={openBirthdayPicker}
+                          accessibilityRole="button"
+                          accessibilityLabel="Select your birthday"
+                        >
+                          <Text style={[styles.dateText, !birthdayInput && styles.datePlaceholder]}>
+                            {birthdayInput || 'Select your birth date'}
+                          </Text>
+                        </Pressable>
+                        <Text style={styles.helperText}>{ageHelperText}</Text>
+                      </View>
+                    </View>
                     <View style={styles.inputCard}>
                       <View style={styles.inputIconContainer}>
                         <Ruler size={20} color={Colors.primary} strokeWidth={2} />
@@ -743,6 +892,20 @@ const styles = StyleSheet.create({
     color: Colors.textLight,
     marginTop: 6,
   },
+  dateSelector: {
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    backgroundColor: Colors.accent,
+    borderRadius: 10,
+  },
+  dateText: {
+    fontSize: 18,
+    fontWeight: '600' as const,
+    color: Colors.text,
+  },
+  datePlaceholder: {
+    color: Colors.textLight,
+  },
   inputSuffix: {
     fontSize: 14,
     color: Colors.textLight,
@@ -851,6 +1014,87 @@ const styles = StyleSheet.create({
   checkCircleSelected: {
     backgroundColor: Colors.primary,
     borderColor: Colors.primary,
+  },
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    justifyContent: 'center',
+    padding: 20,
+  },
+  modalContent: {
+    backgroundColor: Colors.white,
+    borderRadius: 16,
+    padding: 20,
+    gap: 16,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '700' as const,
+    color: Colors.text,
+    textAlign: 'center',
+  },
+  pickerColumns: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  pickerColumn: {
+    flex: 1,
+    backgroundColor: Colors.accent,
+    borderRadius: 12,
+    padding: 10,
+    maxHeight: 260,
+  },
+  pickerLabel: {
+    fontSize: 12,
+    fontWeight: '700' as const,
+    color: Colors.textSecondary,
+    marginBottom: 8,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  pickerList: {
+    gap: 6,
+    paddingBottom: 6,
+  },
+  pickerOption: {
+    paddingVertical: 8,
+    paddingHorizontal: 10,
+    borderRadius: 10,
+  },
+  pickerOptionSelected: {
+    backgroundColor: Colors.white,
+  },
+  pickerOptionText: {
+    fontSize: 16,
+    color: Colors.textSecondary,
+  },
+  pickerOptionTextSelected: {
+    color: Colors.text,
+    fontWeight: '700' as const,
+  },
+  modalActions: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    gap: 10,
+  },
+  modalButton: {
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 10,
+  },
+  modalButtonSecondary: {
+    backgroundColor: Colors.accent,
+  },
+  modalButtonPrimary: {
+    backgroundColor: Colors.primary,
+  },
+  modalButtonTextSecondary: {
+    color: Colors.text,
+    fontWeight: '700' as const,
+  },
+  modalButtonTextPrimary: {
+    color: Colors.white,
+    fontWeight: '700' as const,
   },
   version: {
     textAlign: 'center',
