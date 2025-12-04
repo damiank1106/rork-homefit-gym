@@ -4,6 +4,7 @@ export type WeightUnit = 'kg' | 'lb';
 export type HeightUnit = 'cm' | 'imperial';
 
 export interface UserProfile {
+  birthday: string | null;
   age: number | null;
   heightCm: number | null;
   weight: number | null;
@@ -13,6 +14,7 @@ export interface UserProfile {
 }
 
 export const DEFAULT_USER_PROFILE: UserProfile = {
+  birthday: null,
   age: null,
   heightCm: null,
   weight: null,

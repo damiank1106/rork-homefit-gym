@@ -6,9 +6,9 @@ import { UserProfile } from '@/src/types/profile';
  * 
  * This file handles saving and loading the user's profile data locally on the device.
  * The profile includes:
- * - Age, height, and weight (used for calorie calculations)
+ * - Birthday (used to calculate age), height, and weight
  * - Selected equipment (used to filter exercises the user can do)
- * 
+ *
  * Data is stored using AsyncStorage, which persists between app sessions.
  * 
  * Note: Workout history is stored separately in historyStorage.ts.
