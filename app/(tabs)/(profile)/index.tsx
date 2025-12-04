@@ -7,6 +7,7 @@ import {
   Pressable,
   Animated,
   TextInput,
+  Keyboard,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -20,19 +21,38 @@ import {
   Save,
 } from 'lucide-react-native';
 import Colors from '@/constants/colors';
-import { UserProfile, DEFAULT_USER_PROFILE, WeightUnit } from '@/src/types/profile';
+import { UserProfile, DEFAULT_USER_PROFILE, WeightUnit, HeightUnit } from '@/src/types/profile';
 import { loadUserProfile, saveUserProfile } from '@/src/storage/profileStorage';
 import { EQUIPMENT } from '@/src/data/equipment';
 import { EquipmentId } from '@/src/types/training';
 
+const convertCmToFeetInches = (cm: number) => {
+  const totalInches = cm / 2.54;
+  const feet = Math.floor(totalInches / 12);
+  const inches = parseFloat((totalInches % 12).toFixed(1));
+  return { feet, inches };
+};
+
+const convertFeetInchesToCm = (feet: number, inches: number) => {
+  return Math.round((feet * 12 + inches) * 2.54 * 10) / 10;
+};
+
 export default function ProfileScreen() {
   const fadeAnim = useRef(new Animated.Value(0)).current;
+  const ageRef = useRef<TextInput>(null);
+  const heightCmRef = useRef<TextInput>(null);
+  const heightFeetRef = useRef<TextInput>(null);
+  const heightInchesRef = useRef<TextInput>(null);
+  const weightRef = useRef<TextInput>(null);
   const [profile, setProfile] = useState<UserProfile>(DEFAULT_USER_PROFILE);
   const [isLoading, setIsLoading] = useState(true);
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
-  
+
   const [ageInput, setAgeInput] = useState('');
   const [heightInput, setHeightInput] = useState('');
+  const [heightFeetInput, setHeightFeetInput] = useState('');
+  const [heightInchesInput, setHeightInchesInput] = useState('');
+  const [heightUnit, setHeightUnit] = useState<HeightUnit>('cm');
   const [weightInput, setWeightInput] = useState('');
 
   useEffect(() => {
@@ -53,7 +73,15 @@ export default function ProfileScreen() {
     if (stored) {
       setProfile(stored);
       setAgeInput(stored.age?.toString() ?? '');
+      const resolvedUnit = stored.heightUnit ?? 'cm';
+      setHeightUnit(resolvedUnit);
+
       setHeightInput(stored.heightCm?.toString() ?? '');
+      if (stored.heightCm) {
+        const { feet, inches } = convertCmToFeetInches(stored.heightCm);
+        setHeightFeetInput(feet.toString());
+        setHeightInchesInput(inches.toString());
+      }
       setWeightInput(stored.weight?.toString() ?? '');
     }
     setIsLoading(false);
@@ -75,12 +103,26 @@ export default function ProfileScreen() {
     setSaveStatus('saving');
 
     const age = ageInput ? parseInt(ageInput, 10) : null;
-    const heightCm = heightInput ? parseFloat(heightInput) : null;
+
+    let heightCm: number | null = null;
+    if (heightUnit === 'cm') {
+      heightCm = heightInput ? parseFloat(heightInput) : null;
+    } else {
+      const feet = heightFeetInput ? parseInt(heightFeetInput, 10) : 0;
+      const inches = heightInchesInput ? parseFloat(heightInchesInput) : 0;
+      if (heightFeetInput || heightInchesInput) {
+        heightCm = convertFeetInchesToCm(feet, inches);
+      }
+    }
+
     const weight = weightInput ? parseFloat(weightInput) : null;
 
-    if ((age !== null && (isNaN(age) || age < 0)) ||
-        (heightCm !== null && (isNaN(heightCm) || heightCm < 0)) ||
-        (weight !== null && (isNaN(weight) || weight < 0))) {
+    const isInvalid =
+      (age !== null && (isNaN(age) || age < 0)) ||
+      (heightCm !== null && (isNaN(heightCm) || heightCm < 0)) ||
+      (weight !== null && (isNaN(weight) || weight < 0));
+
+    if (isInvalid) {
       console.log('Invalid input values');
       setSaveStatus('idle');
       return;
@@ -91,6 +133,7 @@ export default function ProfileScreen() {
       age,
       heightCm,
       weight,
+      heightUnit,
     };
 
     await saveUserProfile(updatedProfile);
@@ -100,7 +143,7 @@ export default function ProfileScreen() {
     setTimeout(() => {
       setSaveStatus('idle');
     }, 2000);
-  }, [ageInput, heightInput, weightInput, profile]);
+  }, [ageInput, heightFeetInput, heightInchesInput, heightInput, heightUnit, weightInput, profile]);
 
   const toggleEquipment = useCallback(async (equipmentId: EquipmentId) => {
     const newSelected = profile.selectedEquipment.includes(equipmentId)
@@ -125,6 +168,28 @@ export default function ProfileScreen() {
     await saveUserProfile(updatedProfile);
   }, [profile]);
 
+  const handleHeightUnitChange = useCallback((unit: HeightUnit) => {
+    if (unit === heightUnit) return;
+
+    if (unit === 'cm') {
+      const feet = heightFeetInput ? parseInt(heightFeetInput, 10) : 0;
+      const inches = heightInchesInput ? parseFloat(heightInchesInput) : 0;
+      if (heightFeetInput || heightInchesInput) {
+        const cm = convertFeetInchesToCm(feet, inches);
+        setHeightInput(cm.toString());
+      }
+    } else {
+      const cmValue = heightInput ? parseFloat(heightInput) : null;
+      if (cmValue) {
+        const { feet, inches } = convertCmToFeetInches(cmValue);
+        setHeightFeetInput(feet.toString());
+        setHeightInchesInput(inches.toString());
+      }
+    }
+
+    setHeightUnit(unit);
+  }, [heightFeetInput, heightInchesInput, heightInput, heightUnit]);
+
   const InputCard = ({
     icon: Icon,
     label,
@@ -132,6 +197,11 @@ export default function ProfileScreen() {
     onChangeText,
     placeholder,
     suffix,
+    inputRef,
+    returnKeyType = 'next',
+    onSubmitEditing,
+    blurOnSubmit = false,
+    keyboardType = 'number-pad',
   }: {
     icon: React.ElementType;
     label: string;
@@ -139,6 +209,11 @@ export default function ProfileScreen() {
     onChangeText: (text: string) => void;
     placeholder: string;
     suffix?: string;
+    inputRef?: React.RefObject<TextInput>;
+    returnKeyType?: 'done' | 'next' | 'go';
+    onSubmitEditing?: () => void;
+    blurOnSubmit?: boolean;
+    keyboardType?: 'number-pad' | 'decimal-pad';
   }) => (
     <View style={styles.inputCard}>
       <View style={styles.inputIconContainer}>
@@ -153,10 +228,12 @@ export default function ProfileScreen() {
             onChangeText={onChangeText}
             placeholder={placeholder}
             placeholderTextColor={Colors.textLight}
-            keyboardType="number-pad"
-            returnKeyType="done"
-            blurOnSubmit={false}
-            inputMode="numeric"
+            keyboardType={keyboardType}
+            returnKeyType={returnKeyType}
+            blurOnSubmit={blurOnSubmit}
+            inputMode="decimal"
+            ref={inputRef}
+            onSubmitEditing={onSubmitEditing}
           />
           {suffix && <Text style={styles.inputSuffix}>{suffix}</Text>}
         </View>
@@ -265,15 +342,113 @@ export default function ProfileScreen() {
                   onChangeText={setAgeInput}
                   placeholder="Enter age"
                   suffix="years"
+                  inputRef={ageRef}
+                  onSubmitEditing={() => {
+                    if (heightUnit === 'cm') {
+                      heightCmRef.current?.focus();
+                    } else {
+                      heightFeetRef.current?.focus();
+                    }
+                  }}
                 />
-                <InputCard
-                  icon={Ruler}
-                  label="Height"
-                  value={heightInput}
-                  onChangeText={setHeightInput}
-                  placeholder="Enter height"
-                  suffix="cm"
-                />
+                <View style={styles.inputCard}>
+                  <View style={styles.inputIconContainer}>
+                    <Ruler size={20} color={Colors.primary} strokeWidth={2} />
+                  </View>
+                  <View style={styles.inputContent}>
+                    <View style={styles.inputHeaderRow}>
+                      <Text style={styles.inputLabel}>Height</Text>
+                      <View style={styles.unitToggle}>
+                        <Pressable
+                          onPress={() => handleHeightUnitChange('cm')}
+                          style={[
+                            styles.unitButton,
+                            heightUnit === 'cm' && styles.unitButtonActive,
+                          ]}
+                        >
+                          <Text
+                            style={[
+                              styles.unitText,
+                              heightUnit === 'cm' && styles.unitTextActive,
+                            ]}
+                          >
+                            cm
+                          </Text>
+                        </Pressable>
+                        <Pressable
+                          onPress={() => handleHeightUnitChange('imperial')}
+                          style={[
+                            styles.unitButton,
+                            heightUnit === 'imperial' && styles.unitButtonActive,
+                          ]}
+                        >
+                          <Text
+                            style={[
+                              styles.unitText,
+                              heightUnit === 'imperial' && styles.unitTextActive,
+                            ]}
+                          >
+                            ft / in
+                          </Text>
+                        </Pressable>
+                      </View>
+                    </View>
+
+                    {heightUnit === 'cm' ? (
+                      <View style={styles.inputRow}>
+                        <TextInput
+                          style={styles.textInput}
+                          value={heightInput}
+                          onChangeText={setHeightInput}
+                          placeholder="Enter height"
+                          placeholderTextColor={Colors.textLight}
+                          keyboardType="decimal-pad"
+                          returnKeyType="next"
+                          blurOnSubmit={false}
+                          inputMode="decimal"
+                          ref={heightCmRef}
+                          onSubmitEditing={() => weightRef.current?.focus()}
+                        />
+                        <Text style={styles.inputSuffix}>cm</Text>
+                      </View>
+                    ) : (
+                      <View style={styles.heightImperialRow}>
+                        <View style={styles.heightSubField}>
+                          <Text style={styles.heightSubLabel}>Feet</Text>
+                          <TextInput
+                            style={styles.textInput}
+                            value={heightFeetInput}
+                            onChangeText={setHeightFeetInput}
+                            placeholder="0"
+                            placeholderTextColor={Colors.textLight}
+                            keyboardType="number-pad"
+                            returnKeyType="next"
+                            blurOnSubmit={false}
+                            inputMode="decimal"
+                            ref={heightFeetRef}
+                            onSubmitEditing={() => heightInchesRef.current?.focus()}
+                          />
+                        </View>
+                        <View style={styles.heightSubField}>
+                          <Text style={styles.heightSubLabel}>Inches</Text>
+                          <TextInput
+                            style={styles.textInput}
+                            value={heightInchesInput}
+                            onChangeText={setHeightInchesInput}
+                            placeholder="0"
+                            placeholderTextColor={Colors.textLight}
+                            keyboardType="decimal-pad"
+                            returnKeyType="next"
+                            blurOnSubmit={false}
+                            inputMode="decimal"
+                            ref={heightInchesRef}
+                            onSubmitEditing={() => weightRef.current?.focus()}
+                          />
+                        </View>
+                      </View>
+                    )}
+                  </View>
+                </View>
                 <View style={styles.inputCard}>
                   <View style={styles.inputIconContainer}>
                     <Scale size={20} color={Colors.primary} strokeWidth={2} />
@@ -287,10 +462,12 @@ export default function ProfileScreen() {
                         onChangeText={setWeightInput}
                         placeholder="Enter weight"
                         placeholderTextColor={Colors.textLight}
-                        keyboardType="number-pad"
+                        keyboardType="decimal-pad"
                         returnKeyType="done"
-                        blurOnSubmit={false}
-                        inputMode="numeric"
+                        blurOnSubmit
+                        inputMode="decimal"
+                        ref={weightRef}
+                        onSubmitEditing={Keyboard.dismiss}
                       />
                       <View style={styles.unitToggle}>
                         <Pressable
@@ -501,6 +678,12 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
     marginBottom: 4,
   },
+  inputHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
   inputRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -538,6 +721,19 @@ const styles = StyleSheet.create({
   },
   unitTextActive: {
     color: Colors.white,
+  },
+  heightImperialRow: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  heightSubField: {
+    flex: 1,
+  },
+  heightSubLabel: {
+    fontSize: 12,
+    fontWeight: '600' as const,
+    color: Colors.textSecondary,
+    marginBottom: 6,
   },
   saveButton: {
     borderRadius: 16,
