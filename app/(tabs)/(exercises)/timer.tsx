@@ -11,12 +11,15 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import * as Haptics from 'expo-haptics';
-import { Play, Pause, RotateCcw, X, CheckCircle, Flame, Clock, ArrowLeft } from 'lucide-react-native';
+import { Play, Pause, RotateCcw, X, CheckCircle, Flame, Clock, ArrowLeft, Check } from 'lucide-react-native';
 import Colors from '@/constants/colors';
 import { getExerciseById } from '@/src/data/exercises';
 import { UserProfile } from '@/src/types/profile';
+import { ExerciseLog } from '@/src/types/history';
 import { loadUserProfile } from '@/src/storage/profileStorage';
+import { addExerciseLog } from '@/src/storage/historyStorage';
 import { calculateCalories, formatCalories } from '@/src/utils/calories';
+import { getLocalDateString, formatDuration, getMotivationalMessage } from '@/src/utils/history';
 
 type TimerState = 'idle' | 'running' | 'paused' | 'completed';
 
@@ -29,12 +32,14 @@ export default function TimerScreen() {
   const [remainingTime, setRemainingTime] = useState(exercise?.defaultDurationSec ?? 0);
   const [halfwayPlayed, setHalfwayPlayed] = useState(false);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
+  const [sessionSaved, setSessionSaved] = useState(false);
 
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const progressAnim = useRef(new Animated.Value(0)).current;
   const pulseAnim = useRef(new Animated.Value(1)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const summarySlideAnim = useRef(new Animated.Value(100)).current;
+  const celebrationAnim = useRef(new Animated.Value(0)).current;
 
   const totalDuration = exercise?.defaultDurationSec ?? 0;
   const halfwayPoint = Math.floor(totalDuration / 2);
@@ -52,20 +57,6 @@ export default function TimerScreen() {
     console.log('Profile loaded for timer:', profile?.weight, profile?.weightUnit);
   };
 
-  /**
-   * CALORIE CALCULATION
-   * 
-   * Here we calculate the estimated calories burned during the exercise.
-   * The calculation uses:
-   * - MET value: The metabolic equivalent of the exercise (from exercise data)
-   * - User's weight: Loaded from their profile (in kg or lb)
-   * - Elapsed time: How long they've been exercising
-   * 
-   * Formula: kcal/min = (MET × 3.5 × weight in kg) / 200
-   * 
-   * FUTURE PHASE: When the exercise completes, we will save this data
-   * along with the workout timestamp to build a history log and statistics.
-   */
   const currentCalories = exercise
     ? calculateCalories(
         exercise.met,
@@ -83,6 +74,52 @@ export default function TimerScreen() {
         totalDuration - remainingTime
       )
     : null;
+
+  /**
+   * SAVE COMPLETED SESSION
+   * 
+   * This function is called when a workout is completed (either naturally or early).
+   * It saves the exercise log to local storage, which includes:
+   * - Exercise details (id, name, body area)
+   * - Duration actually performed
+   * - Estimated calories burned (if user weight is set)
+   * - Timestamps for tracking
+   * 
+   * This data powers the calendar, streaks, and stats on the Home screen.
+   */
+  const saveCompletedSession = useCallback(async () => {
+    if (!exercise || sessionSaved) return;
+
+    const actualElapsed = Math.max(1, totalDuration - remainingTime);
+    
+    const calories = calculateCalories(
+      exercise.met,
+      userProfile?.weight ?? null,
+      userProfile?.weightUnit ?? 'kg',
+      actualElapsed
+    );
+
+    const log: ExerciseLog = {
+      id: Date.now().toString(),
+      exerciseId: exercise.id,
+      exerciseName: exercise.name,
+      bodyArea: exercise.bodyArea,
+      date: getLocalDateString(),
+      timestamp: new Date().toISOString(),
+      durationSeconds: actualElapsed,
+      calories: calories !== null ? Math.round(calories * 10) / 10 : null,
+    };
+
+    console.log('Saving completed session:', log);
+    
+    try {
+      await addExerciseLog(log);
+      setSessionSaved(true);
+      console.log('Session saved successfully!');
+    } catch (error) {
+      console.error('Error saving session:', error);
+    }
+  }, [exercise, userProfile, totalDuration, remainingTime, sessionSaved]);
 
   useEffect(() => {
     Animated.timing(fadeAnim, {
@@ -125,16 +162,26 @@ export default function TimerScreen() {
 
   useEffect(() => {
     if (timerState === 'completed') {
-      Animated.spring(summarySlideAnim, {
-        toValue: 0,
-        friction: 8,
-        tension: 40,
-        useNativeDriver: true,
-      }).start();
+      Animated.parallel([
+        Animated.spring(summarySlideAnim, {
+          toValue: 0,
+          friction: 8,
+          tension: 40,
+          useNativeDriver: true,
+        }),
+        Animated.timing(celebrationAnim, {
+          toValue: 1,
+          duration: 600,
+          useNativeDriver: true,
+        }),
+      ]).start();
+      
+      saveCompletedSession();
     } else {
       summarySlideAnim.setValue(100);
+      celebrationAnim.setValue(0);
     }
-  }, [timerState, summarySlideAnim]);
+  }, [timerState, summarySlideAnim, celebrationAnim, saveCompletedSession]);
 
   const playSound = useCallback(async (type: 'start' | 'halfway' | 'end') => {
     try {
@@ -153,6 +200,7 @@ export default function TimerScreen() {
     console.log('Timer started');
     setTimerState('running');
     setHalfwayPlayed(false);
+    setSessionSaved(false);
     playSound('start');
 
     intervalRef.current = setInterval(() => {
@@ -201,11 +249,12 @@ export default function TimerScreen() {
     setTimerState('idle');
     setRemainingTime(totalDuration);
     setHalfwayPlayed(false);
+    setSessionSaved(false);
     progressAnim.setValue(0);
   }, [totalDuration, progressAnim]);
 
-  const stopTimer = useCallback(() => {
-    console.log('Timer stopped by user');
+  const finishEarly = useCallback(() => {
+    console.log('Timer finished early by user');
     if (intervalRef.current) {
       clearInterval(intervalRef.current);
     }
@@ -260,11 +309,14 @@ export default function TimerScreen() {
     outputRange: ['0%', '100%'],
   });
 
+  const actualElapsed = totalDuration - remainingTime;
+  const motivational = getMotivationalMessage(actualElapsed);
+
   return (
     <LinearGradient
       colors={
         timerState === 'completed'
-          ? [Colors.success, '#5BA87C']
+          ? ['#7BC9A4', '#5BA87C', '#4A9770']
           : [Colors.gradientStart, Colors.gradientMiddle, Colors.gradientEnd]
       }
       style={styles.gradient}
@@ -272,13 +324,21 @@ export default function TimerScreen() {
       <SafeAreaView style={styles.container}>
         <Animated.View style={[styles.content, { opacity: fadeAnim }]}>
           <Pressable style={styles.closeButton} onPress={handleClose}>
-            <X size={28} color={Colors.text} strokeWidth={2} />
+            <X size={28} color={timerState === 'completed' ? Colors.white : Colors.text} strokeWidth={2} />
           </Pressable>
 
           <View style={styles.exerciseInfo}>
-            <Text style={styles.exerciseName}>{exercise.name}</Text>
-            <Text style={styles.exerciseTarget}>
-              {timerState === 'completed' ? 'Workout Complete!' : `Target: ${totalDuration}s`}
+            <Text style={[
+              styles.exerciseName,
+              timerState === 'completed' && styles.exerciseNameCompleted
+            ]}>
+              {exercise.name}
+            </Text>
+            <Text style={[
+              styles.exerciseTarget,
+              timerState === 'completed' && styles.exerciseTargetCompleted
+            ]}>
+              {timerState === 'completed' ? 'Workout Complete! 🎉' : `Target: ${totalDuration}s`}
             </Text>
           </View>
 
@@ -291,7 +351,9 @@ export default function TimerScreen() {
               ]}
             >
               {timerState === 'completed' ? (
-                <CheckCircle size={80} color={Colors.white} strokeWidth={1.5} />
+                <Animated.View style={{ opacity: celebrationAnim }}>
+                  <CheckCircle size={80} color={Colors.white} strokeWidth={1.5} />
+                </Animated.View>
               ) : (
                 <Text style={styles.timerText}>{formatTime(remainingTime)}</Text>
               )}
@@ -314,7 +376,10 @@ export default function TimerScreen() {
           )}
 
           <View style={styles.progressContainer}>
-            <View style={styles.progressBar}>
+            <View style={[
+              styles.progressBar,
+              timerState === 'completed' && styles.progressBarCompleted
+            ]}>
               <Animated.View
                 style={[
                   styles.progressFill,
@@ -324,8 +389,14 @@ export default function TimerScreen() {
               />
             </View>
             <View style={styles.progressLabels}>
-              <Text style={styles.progressLabel}>0:00</Text>
-              <Text style={styles.progressLabel}>{formatTime(totalDuration)}</Text>
+              <Text style={[
+                styles.progressLabel,
+                timerState === 'completed' && styles.progressLabelCompleted
+              ]}>0:00</Text>
+              <Text style={[
+                styles.progressLabel,
+                timerState === 'completed' && styles.progressLabelCompleted
+              ]}>{formatTime(totalDuration)}</Text>
             </View>
           </View>
 
@@ -336,25 +407,30 @@ export default function TimerScreen() {
                 { transform: [{ translateY: summarySlideAnim }] }
               ]}
             >
-              <Text style={styles.summaryTitle}>Workout Summary</Text>
-              
-              <View style={styles.summaryRow}>
-                <View style={styles.summaryItem}>
-                  <Clock size={20} color={Colors.primary} strokeWidth={2} />
-                  <Text style={styles.summaryLabel}>Duration</Text>
-                  <Text style={styles.summaryValue}>
-                    {formatTime(totalDuration - remainingTime)}
-                  </Text>
-                </View>
-                
-                <View style={styles.summaryDivider} />
-                
-                <View style={styles.summaryItem}>
-                  <Flame size={20} color={Colors.warning} strokeWidth={2} />
-                  <Text style={styles.summaryLabel}>Calories</Text>
-                  <Text style={styles.summaryValue}>
-                    {finalCalories !== null ? formatCalories(finalCalories) : '—'}
-                  </Text>
+              <View style={styles.motivationalBanner}>
+                <Text style={styles.motivationalEmoji}>{motivational.emoji}</Text>
+                <Text style={styles.motivationalText}>{motivational.message}</Text>
+              </View>
+
+              <View style={styles.summaryStats}>
+                <View style={styles.summaryRow}>
+                  <View style={styles.summaryItem}>
+                    <Clock size={22} color={Colors.primary} strokeWidth={2} />
+                    <Text style={styles.summaryLabel}>Duration</Text>
+                    <Text style={styles.summaryValue}>
+                      {formatDuration(actualElapsed)}
+                    </Text>
+                  </View>
+                  
+                  <View style={styles.summaryDivider} />
+                  
+                  <View style={styles.summaryItem}>
+                    <Flame size={22} color={Colors.warning} strokeWidth={2} />
+                    <Text style={styles.summaryLabel}>Calories</Text>
+                    <Text style={styles.summaryValue}>
+                      {finalCalories !== null ? `~${finalCalories.toFixed(1)}` : '—'}
+                    </Text>
+                  </View>
                 </View>
               </View>
 
@@ -367,7 +443,7 @@ export default function TimerScreen() {
               <View style={styles.summaryActions}>
                 <Pressable style={styles.outlineButton} onPress={resetTimer}>
                   <RotateCcw size={18} color={Colors.text} strokeWidth={2} />
-                  <Text style={styles.outlineButtonText}>Try Again</Text>
+                  <Text style={styles.outlineButtonText}>Again</Text>
                 </Pressable>
                 <Pressable style={styles.primaryButton} onPress={handleClose}>
                   <LinearGradient
@@ -396,8 +472,8 @@ export default function TimerScreen() {
 
               {timerState === 'running' && (
                 <View style={styles.runningControls}>
-                  <Pressable style={styles.secondaryButton} onPress={stopTimer}>
-                    <X size={24} color={Colors.text} strokeWidth={2} />
+                  <Pressable style={styles.finishButton} onPress={finishEarly}>
+                    <Check size={22} color={Colors.success} strokeWidth={2.5} />
                   </Pressable>
                   <Pressable style={styles.primaryButton} onPress={pauseTimer}>
                     <LinearGradient
@@ -413,8 +489,8 @@ export default function TimerScreen() {
 
               {timerState === 'paused' && (
                 <View style={styles.runningControls}>
-                  <Pressable style={styles.secondaryButton} onPress={stopTimer}>
-                    <X size={24} color={Colors.text} strokeWidth={2} />
+                  <Pressable style={styles.finishButton} onPress={finishEarly}>
+                    <Check size={22} color={Colors.success} strokeWidth={2.5} />
                   </Pressable>
                   <Pressable style={styles.primaryButton} onPress={resumeTimer}>
                     <LinearGradient
@@ -473,10 +549,18 @@ const styles = StyleSheet.create({
     letterSpacing: -0.5,
     marginBottom: 8,
   },
+  exerciseNameCompleted: {
+    color: Colors.white,
+  },
   exerciseTarget: {
     fontSize: 16,
     color: Colors.textSecondary,
     fontWeight: '500' as const,
+  },
+  exerciseTargetCompleted: {
+    color: 'rgba(255,255,255,0.9)',
+    fontSize: 18,
+    fontWeight: '600' as const,
   },
   timerContainer: {
     flex: 1,
@@ -498,7 +582,9 @@ const styles = StyleSheet.create({
     elevation: 10,
   },
   timerCircleCompleted: {
-    backgroundColor: Colors.success,
+    backgroundColor: 'rgba(255,255,255,0.25)',
+    borderWidth: 4,
+    borderColor: 'rgba(255,255,255,0.5)',
   },
   timerText: {
     fontSize: 64,
@@ -542,6 +628,9 @@ const styles = StyleSheet.create({
     borderRadius: 4,
     overflow: 'hidden',
   },
+  progressBarCompleted: {
+    backgroundColor: 'rgba(255,255,255,0.3)',
+  },
   progressFill: {
     height: '100%',
     backgroundColor: Colors.primary,
@@ -558,6 +647,9 @@ const styles = StyleSheet.create({
   progressLabel: {
     fontSize: 13,
     color: Colors.textSecondary,
+  },
+  progressLabelCompleted: {
+    color: 'rgba(255,255,255,0.8)',
   },
   controlsContainer: {
     marginBottom: 30,
@@ -584,7 +676,7 @@ const styles = StyleSheet.create({
     fontWeight: '700' as const,
     color: Colors.white,
   },
-  secondaryButton: {
+  finishButton: {
     width: 60,
     height: 60,
     borderRadius: 30,
@@ -596,6 +688,8 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.15,
     shadowRadius: 12,
     elevation: 5,
+    borderWidth: 2,
+    borderColor: Colors.success,
   },
   runningControls: {
     flexDirection: 'row',
@@ -614,17 +708,30 @@ const styles = StyleSheet.create({
     shadowRadius: 16,
     elevation: 6,
   },
-  summaryTitle: {
-    fontSize: 20,
-    fontWeight: '700' as const,
+  motivationalBanner: {
+    alignItems: 'center',
+    marginBottom: 20,
+    paddingBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.border,
+  },
+  motivationalEmoji: {
+    fontSize: 36,
+    marginBottom: 8,
+  },
+  motivationalText: {
+    fontSize: 16,
+    fontWeight: '600' as const,
     color: Colors.text,
     textAlign: 'center',
-    marginBottom: 20,
+    lineHeight: 22,
+  },
+  summaryStats: {
+    marginBottom: 16,
   },
   summaryRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 16,
   },
   summaryItem: {
     flex: 1,
@@ -640,13 +747,13 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '600' as const,
     color: Colors.textSecondary,
-    textTransform: 'uppercase',
+    textTransform: 'uppercase' as const,
     letterSpacing: 0.5,
     marginTop: 8,
     marginBottom: 4,
   },
   summaryValue: {
-    fontSize: 22,
+    fontSize: 24,
     fontWeight: '700' as const,
     color: Colors.text,
   },
@@ -692,7 +799,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '600' as const,
     color: Colors.textSecondary,
-    textTransform: 'uppercase',
+    textTransform: 'uppercase' as const,
     letterSpacing: 0.5,
     marginBottom: 6,
   },
