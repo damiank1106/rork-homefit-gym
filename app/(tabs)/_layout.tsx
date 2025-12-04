@@ -1,5 +1,5 @@
 import { Tabs } from 'expo-router';
-import { Home, Dumbbell, User } from 'lucide-react-native';
+import { Home, Dumbbell, User, BarChart3 } from 'lucide-react-native';
 import React from 'react';
 import { StyleSheet, View } from 'react-native';
 import Colors from '@/constants/colors';
@@ -34,6 +34,17 @@ export default function TabLayout() {
           tabBarIcon: ({ color, size }) => (
             <View style={styles.iconWrapper}>
               <Dumbbell size={size} color={color} strokeWidth={2.2} />
+            </View>
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="(charts)"
+        options={{
+          title: 'Charts',
+          tabBarIcon: ({ color, size }) => (
+            <View style={styles.iconWrapper}>
+              <BarChart3 size={size} color={color} strokeWidth={2.2} />
             </View>
           ),
         }}
