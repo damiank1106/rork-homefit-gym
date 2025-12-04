@@ -39,9 +39,29 @@ const convertFeetInchesToCm = (feet: number, inches: number) => {
   return Math.round((feet * 12 + inches) * 2.54 * 10) / 10;
 };
 
+const calculateAge = (birthday: string): number | null => {
+  if (!birthday) return null;
+
+  const birthDate = new Date(birthday);
+  if (isNaN(birthDate.getTime())) return null;
+
+  const today = new Date();
+  let age = today.getFullYear() - birthDate.getFullYear();
+
+  const hasHadBirthdayThisYear =
+    today.getMonth() > birthDate.getMonth() ||
+    (today.getMonth() === birthDate.getMonth() && today.getDate() >= birthDate.getDate());
+
+  if (!hasHadBirthdayThisYear) {
+    age -= 1;
+  }
+
+  return age >= 0 ? age : null;
+};
+
 export default function ProfileScreen() {
   const fadeAnim = useRef(new Animated.Value(0)).current;
-  const ageRef = useRef<TextInput>(null);
+  const birthdayRef = useRef<TextInput>(null);
   const heightCmRef = useRef<TextInput>(null);
   const heightFeetRef = useRef<TextInput>(null);
   const heightInchesRef = useRef<TextInput>(null);
@@ -50,7 +70,7 @@ export default function ProfileScreen() {
   const [isLoading, setIsLoading] = useState(true);
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
 
-  const [ageInput, setAgeInput] = useState('');
+  const [birthdayInput, setBirthdayInput] = useState('');
   const [heightInput, setHeightInput] = useState('');
   const [heightFeetInput, setHeightFeetInput] = useState('');
   const [heightInchesInput, setHeightInchesInput] = useState('');
@@ -73,8 +93,15 @@ export default function ProfileScreen() {
     setIsLoading(true);
     const stored = await loadUserProfile();
     if (stored) {
-      setProfile(stored);
-      setAgeInput(stored.age?.toString() ?? '');
+      const normalizedProfile: UserProfile = {
+        ...stored,
+        birthday: stored.birthday ?? null,
+        age: stored.birthday
+          ? calculateAge(stored.birthday) ?? stored.age ?? null
+          : stored.age ?? null,
+      };
+      setProfile(normalizedProfile);
+      setBirthdayInput(stored.birthday ?? '');
       const resolvedUnit = stored.heightUnit ?? 'cm';
       setHeightUnit(resolvedUnit);
 
@@ -104,7 +131,8 @@ export default function ProfileScreen() {
     console.log('Saving profile...');
     setSaveStatus('saving');
 
-    const age = ageInput ? parseInt(ageInput, 10) : null;
+    const birthDateInput = birthdayInput.trim();
+    const age = calculateAge(birthDateInput);
 
     let heightCm: number | null = null;
     if (heightUnit === 'cm') {
@@ -120,7 +148,7 @@ export default function ProfileScreen() {
     const weight = weightInput ? parseFloat(weightInput) : null;
 
     const isInvalid =
-      (age !== null && (isNaN(age) || age < 0)) ||
+      (birthDateInput && age === null) ||
       (heightCm !== null && (isNaN(heightCm) || heightCm < 0)) ||
       (weight !== null && (isNaN(weight) || weight < 0));
 
@@ -132,6 +160,7 @@ export default function ProfileScreen() {
 
     const updatedProfile: UserProfile = {
       ...profile,
+      birthday: birthDateInput || null,
       age,
       heightCm,
       weight,
@@ -145,7 +174,7 @@ export default function ProfileScreen() {
     setTimeout(() => {
       setSaveStatus('idle');
     }, 2000);
-  }, [ageInput, heightFeetInput, heightInchesInput, heightInput, heightUnit, weightInput, profile]);
+  }, [birthdayInput, heightFeetInput, heightInchesInput, heightInput, heightUnit, weightInput, profile]);
 
   const toggleEquipment = useCallback(async (equipmentId: EquipmentId) => {
     const newSelected = profile.selectedEquipment.includes(equipmentId)
@@ -204,6 +233,7 @@ export default function ProfileScreen() {
     onSubmitEditing,
     blurOnSubmit = false,
     keyboardType = 'default',
+    helperText,
   }: {
     icon: React.ElementType;
     label: string;
@@ -216,6 +246,7 @@ export default function ProfileScreen() {
     onSubmitEditing?: () => void;
     blurOnSubmit?: boolean;
     keyboardType?: KeyboardTypeOptions;
+    helperText?: string;
   }) => (
     <View style={styles.inputCard}>
       <View style={styles.inputIconContainer}>
@@ -238,9 +269,17 @@ export default function ProfileScreen() {
           />
           {suffix && <Text style={styles.inputSuffix}>{suffix}</Text>}
         </View>
+        {helperText && <Text style={styles.helperText}>{helperText}</Text>}
       </View>
     </View>
   );
+
+  const calculatedAge = calculateAge(birthdayInput);
+  const ageHelperText = birthdayInput
+    ? calculatedAge !== null
+      ? `Age: ${calculatedAge} years`
+      : 'Enter a valid date (YYYY-MM-DD)'
+    : 'Add your birth date to calculate age';
 
   const EquipmentItem = ({ equipment }: { equipment: typeof EQUIPMENT[0] }) => {
     const isSelected = profile.selectedEquipment.includes(equipment.id);
@@ -342,14 +381,15 @@ export default function ProfileScreen() {
                   <View style={styles.inputsContainer}>
                     <InputCard
                       icon={Calendar}
-                      label="Age"
-                      value={ageInput}
-                      onChangeText={setAgeInput}
-                      placeholder="Enter age"
-                      suffix="years"
-                      inputRef={ageRef}
-                      returnKeyType="default"
+                      label="Birthday"
+                      value={birthdayInput}
+                      onChangeText={setBirthdayInput}
+                      placeholder="YYYY-MM-DD"
+                      inputRef={birthdayRef}
+                      returnKeyType="next"
                       blurOnSubmit={false}
+                      keyboardType="numbers-and-punctuation"
+                      helperText={ageHelperText}
                     />
                     <View style={styles.inputCard}>
                       <View style={styles.inputIconContainer}>
@@ -697,6 +737,11 @@ const styles = StyleSheet.create({
     color: Colors.text,
     padding: 0,
     minWidth: 80,
+  },
+  helperText: {
+    fontSize: 12,
+    color: Colors.textLight,
+    marginTop: 6,
   },
   inputSuffix: {
     fontSize: 14,
