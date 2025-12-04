@@ -1,19 +1,22 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
   useWindowDimensions,
+  Switch,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
-import { Search } from 'lucide-react-native';
+import { Search, Filter } from 'lucide-react-native';
 import Colors from '@/constants/colors';
 import { EXERCISES } from '@/src/data/exercises';
 import { EQUIPMENT } from '@/src/data/equipment';
 import { BodyArea, EquipmentId } from '@/src/types/training';
+import { UserProfile } from '@/src/types/profile';
+import { loadUserProfile } from '@/src/storage/profileStorage';
 import ExerciseCard from '@/src/components/ExerciseCard';
 import FilterChip from '@/src/components/FilterChip';
 import EquipmentChip from '@/src/components/EquipmentChip';
@@ -35,8 +38,21 @@ export default function ExercisesScreen() {
   const { width } = useWindowDimensions();
   const [selectedBodyArea, setSelectedBodyArea] = useState<BodyAreaFilter>('all');
   const [selectedEquipment, setSelectedEquipment] = useState<EquipmentId[]>([]);
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
+  const [useMyEquipmentOnly, setUseMyEquipmentOnly] = useState(false);
 
   const isTablet = width >= 768;
+
+  useEffect(() => {
+    loadProfile();
+  }, []);
+
+  const loadProfile = async () => {
+    console.log('Loading user profile for exercises filter...');
+    const profile = await loadUserProfile();
+    setUserProfile(profile);
+    console.log('Profile loaded:', profile?.selectedEquipment?.length ?? 0, 'equipment items');
+  };
 
   const filteredExercises = useMemo(() => {
     let result = EXERCISES;
@@ -51,8 +67,16 @@ export default function ExercisesScreen() {
       );
     }
 
+    if (useMyEquipmentOnly && userProfile?.selectedEquipment && userProfile.selectedEquipment.length > 0) {
+      const userEquipment = new Set([...userProfile.selectedEquipment, 'bodyweight' as EquipmentId]);
+      
+      result = result.filter((exercise) => {
+        return exercise.equipment.every((eq) => userEquipment.has(eq));
+      });
+    }
+
     return result;
-  }, [selectedBodyArea, selectedEquipment]);
+  }, [selectedBodyArea, selectedEquipment, useMyEquipmentOnly, userProfile]);
 
   const toggleEquipment = (id: EquipmentId) => {
     setSelectedEquipment((prev) =>
@@ -67,6 +91,8 @@ export default function ExercisesScreen() {
       params: { exerciseId },
     });
   };
+
+  const hasUserEquipment = userProfile?.selectedEquipment && userProfile.selectedEquipment.length > 0;
 
   return (
     <LinearGradient
@@ -83,6 +109,21 @@ export default function ExercisesScreen() {
         </View>
 
         <View style={styles.filtersSection}>
+          {hasUserEquipment && (
+            <View style={styles.myEquipmentToggle}>
+              <View style={styles.toggleContent}>
+                <Filter size={18} color={Colors.primary} strokeWidth={2} />
+                <Text style={styles.toggleLabel}>Show only my equipment</Text>
+              </View>
+              <Switch
+                value={useMyEquipmentOnly}
+                onValueChange={setUseMyEquipmentOnly}
+                trackColor={{ false: Colors.border, true: Colors.primaryDark }}
+                thumbColor={useMyEquipmentOnly ? Colors.primary : Colors.white}
+              />
+            </View>
+          )}
+
           <Text style={styles.filterLabel}>Body Area</Text>
           <ScrollView
             horizontal
@@ -130,7 +171,9 @@ export default function ExercisesScreen() {
               <Search size={48} color={Colors.textLight} strokeWidth={1.5} />
               <Text style={styles.emptyTitle}>No exercises found</Text>
               <Text style={styles.emptySubtitle}>
-                Try adjusting your filters
+                {useMyEquipmentOnly 
+                  ? 'Try turning off the equipment filter or add more equipment in Profile'
+                  : 'Try adjusting your filters'}
               </Text>
             </View>
           ) : (
@@ -175,8 +218,34 @@ const styles = StyleSheet.create({
     color: Colors.textSecondary,
   },
   filtersSection: {
-    paddingTop: 20,
+    paddingTop: 12,
     paddingBottom: 16,
+  },
+  myEquipmentToggle: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: Colors.white,
+    marginHorizontal: 20,
+    marginBottom: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 12,
+    shadowColor: Colors.shadowColor,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 6,
+    elevation: 2,
+  },
+  toggleContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  toggleLabel: {
+    fontSize: 15,
+    fontWeight: '600' as const,
+    color: Colors.text,
   },
   filterLabel: {
     fontSize: 14,
@@ -226,5 +295,7 @@ const styles = StyleSheet.create({
   emptySubtitle: {
     fontSize: 15,
     color: Colors.textSecondary,
+    textAlign: 'center',
+    paddingHorizontal: 40,
   },
 });

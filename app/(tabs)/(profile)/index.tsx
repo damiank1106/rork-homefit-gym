@@ -1,4 +1,4 @@
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect, useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -6,24 +6,34 @@ import {
   ScrollView,
   Pressable,
   Animated,
+  TextInput,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import {
   User,
-  Settings,
-  Bell,
-  HelpCircle,
-  ChevronRight,
-  Award,
+  Check,
+  Scale,
+  Ruler,
   Calendar,
-  Flame,
-  Clock,
+  Dumbbell,
+  Save,
 } from 'lucide-react-native';
 import Colors from '@/constants/colors';
+import { UserProfile, DEFAULT_USER_PROFILE, WeightUnit } from '@/src/types/profile';
+import { loadUserProfile, saveUserProfile } from '@/src/storage/profileStorage';
+import { EQUIPMENT } from '@/src/data/equipment';
+import { EquipmentId } from '@/src/types/training';
 
 export default function ProfileScreen() {
   const fadeAnim = useRef(new Animated.Value(0)).current;
+  const [profile, setProfile] = useState<UserProfile>(DEFAULT_USER_PROFILE);
+  const [isLoading, setIsLoading] = useState(true);
+  const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
+  
+  const [ageInput, setAgeInput] = useState('');
+  const [heightInput, setHeightInput] = useState('');
+  const [weightInput, setWeightInput] = useState('');
 
   useEffect(() => {
     Animated.timing(fadeAnim, {
@@ -33,15 +43,128 @@ export default function ProfileScreen() {
     }).start();
   }, [fadeAnim]);
 
-  const MenuButton = ({
+  useEffect(() => {
+    loadProfile();
+  }, []);
+
+  const loadProfile = async () => {
+    setIsLoading(true);
+    const stored = await loadUserProfile();
+    if (stored) {
+      setProfile(stored);
+      setAgeInput(stored.age?.toString() ?? '');
+      setHeightInput(stored.heightCm?.toString() ?? '');
+      setWeightInput(stored.weight?.toString() ?? '');
+    }
+    setIsLoading(false);
+  };
+
+  /**
+   * SAVE PROFILE HANDLER
+   * 
+   * This is where the UserProfile is validated and saved to local storage.
+   * The profile data is used throughout the app for:
+   * - Filtering exercises by available equipment
+   * - Calculating calories burned during workouts
+   * 
+   * FUTURE PHASE: This data will also be used when saving workout history
+   * to calculate accurate calorie estimates for completed exercises.
+   */
+  const handleSaveProfile = useCallback(async () => {
+    console.log('Saving profile...');
+    setSaveStatus('saving');
+
+    const age = ageInput ? parseInt(ageInput, 10) : null;
+    const heightCm = heightInput ? parseFloat(heightInput) : null;
+    const weight = weightInput ? parseFloat(weightInput) : null;
+
+    if ((age !== null && (isNaN(age) || age < 0)) ||
+        (heightCm !== null && (isNaN(heightCm) || heightCm < 0)) ||
+        (weight !== null && (isNaN(weight) || weight < 0))) {
+      console.log('Invalid input values');
+      setSaveStatus('idle');
+      return;
+    }
+
+    const updatedProfile: UserProfile = {
+      ...profile,
+      age,
+      heightCm,
+      weight,
+    };
+
+    await saveUserProfile(updatedProfile);
+    setProfile(updatedProfile);
+    setSaveStatus('saved');
+    
+    setTimeout(() => {
+      setSaveStatus('idle');
+    }, 2000);
+  }, [ageInput, heightInput, weightInput, profile]);
+
+  const toggleEquipment = useCallback(async (equipmentId: EquipmentId) => {
+    const newSelected = profile.selectedEquipment.includes(equipmentId)
+      ? profile.selectedEquipment.filter(id => id !== equipmentId)
+      : [...profile.selectedEquipment, equipmentId];
+
+    const updatedProfile: UserProfile = {
+      ...profile,
+      selectedEquipment: newSelected,
+    };
+
+    setProfile(updatedProfile);
+    await saveUserProfile(updatedProfile);
+  }, [profile]);
+
+  const setWeightUnit = useCallback(async (unit: WeightUnit) => {
+    const updatedProfile: UserProfile = {
+      ...profile,
+      weightUnit: unit,
+    };
+    setProfile(updatedProfile);
+    await saveUserProfile(updatedProfile);
+  }, [profile]);
+
+  const InputCard = ({
     icon: Icon,
-    title,
-    subtitle,
+    label,
+    value,
+    onChangeText,
+    placeholder,
+    keyboardType = 'numeric',
+    suffix,
   }: {
     icon: React.ElementType;
-    title: string;
-    subtitle?: string;
-  }) => {
+    label: string;
+    value: string;
+    onChangeText: (text: string) => void;
+    placeholder: string;
+    keyboardType?: 'numeric' | 'default';
+    suffix?: string;
+  }) => (
+    <View style={styles.inputCard}>
+      <View style={styles.inputIconContainer}>
+        <Icon size={20} color={Colors.primary} strokeWidth={2} />
+      </View>
+      <View style={styles.inputContent}>
+        <Text style={styles.inputLabel}>{label}</Text>
+        <View style={styles.inputRow}>
+          <TextInput
+            style={styles.textInput}
+            value={value}
+            onChangeText={onChangeText}
+            placeholder={placeholder}
+            placeholderTextColor={Colors.textLight}
+            keyboardType={keyboardType}
+          />
+          {suffix && <Text style={styles.inputSuffix}>{suffix}</Text>}
+        </View>
+      </View>
+    </View>
+  );
+
+  const EquipmentItem = ({ equipment }: { equipment: typeof EQUIPMENT[0] }) => {
+    const isSelected = profile.selectedEquipment.includes(equipment.id);
     const scaleAnim = useRef(new Animated.Value(1)).current;
 
     return (
@@ -49,7 +172,7 @@ export default function ProfileScreen() {
         <Pressable
           onPressIn={() => {
             Animated.spring(scaleAnim, {
-              toValue: 0.98,
+              toValue: 0.97,
               useNativeDriver: true,
             }).start();
           }}
@@ -61,40 +184,44 @@ export default function ProfileScreen() {
               useNativeDriver: true,
             }).start();
           }}
-          style={styles.menuButton}
+          onPress={() => toggleEquipment(equipment.id)}
+          style={[
+            styles.equipmentItem,
+            isSelected && styles.equipmentItemSelected,
+          ]}
         >
-          <View style={styles.menuIconContainer}>
-            <Icon size={20} color={Colors.primary} strokeWidth={2} />
+          <View style={styles.equipmentContent}>
+            <Text style={styles.equipmentLabel}>{equipment.label}</Text>
+            <Text style={styles.equipmentDescription} numberOfLines={1}>
+              {equipment.description}
+            </Text>
           </View>
-          <View style={styles.menuContent}>
-            <Text style={styles.menuTitle}>{title}</Text>
-            {subtitle && <Text style={styles.menuSubtitle}>{subtitle}</Text>}
+          <View style={[
+            styles.checkCircle,
+            isSelected && styles.checkCircleSelected,
+          ]}>
+            {isSelected && <Check size={14} color={Colors.white} strokeWidth={3} />}
           </View>
-          <ChevronRight size={20} color={Colors.textLight} />
         </Pressable>
       </Animated.View>
     );
   };
 
-  const StatCard = ({
-    icon: Icon,
-    value,
-    label,
-    color,
-  }: {
-    icon: React.ElementType;
-    value: string;
-    label: string;
-    color: string;
-  }) => (
-    <View style={styles.statCard}>
-      <View style={[styles.statIcon, { backgroundColor: color }]}>
-        <Icon size={18} color={Colors.white} strokeWidth={2.2} />
-      </View>
-      <Text style={styles.statValue}>{value}</Text>
-      <Text style={styles.statLabel}>{label}</Text>
-    </View>
-  );
+  if (isLoading) {
+    return (
+      <LinearGradient
+        colors={[Colors.gradientStart, Colors.gradientMiddle, Colors.background]}
+        locations={[0, 0.3, 0.6]}
+        style={styles.gradient}
+      >
+        <SafeAreaView style={styles.container} edges={['top']}>
+          <View style={styles.loadingContainer}>
+            <Text style={styles.loadingText}>Loading profile...</Text>
+          </View>
+        </SafeAreaView>
+      </LinearGradient>
+    );
+  }
 
   return (
     <LinearGradient
@@ -106,10 +233,12 @@ export default function ProfileScreen() {
         <ScrollView
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.scrollContent}
+          keyboardShouldPersistTaps="handled"
         >
           <Animated.View style={[styles.content, { opacity: fadeAnim }]}>
             <View style={styles.header}>
               <Text style={styles.title}>Profile</Text>
+              <Text style={styles.subtitle}>Customize your fitness journey</Text>
             </View>
 
             <View style={styles.profileCard}>
@@ -125,64 +254,105 @@ export default function ProfileScreen() {
               <Text style={styles.profileEmail}>Welcome to HomeFit Gym</Text>
             </View>
 
-            <View style={styles.statsRow}>
-              <StatCard
-                icon={Flame}
-                value="7"
-                label="Day Streak"
-                color={Colors.warning}
-              />
-              <StatCard
-                icon={Calendar}
-                value="24"
-                label="Workouts"
-                color={Colors.secondary}
-              />
-              <StatCard
-                icon={Clock}
-                value="6.5h"
-                label="Total Time"
-                color={Colors.success}
-              />
-            </View>
-
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Settings</Text>
-              <View style={styles.menuContainer}>
-                <MenuButton
-                  icon={User}
-                  title="Account"
-                  subtitle="Personal information"
+              <Text style={styles.sectionTitle}>Your Details</Text>
+              <View style={styles.inputsContainer}>
+                <InputCard
+                  icon={Calendar}
+                  label="Age"
+                  value={ageInput}
+                  onChangeText={setAgeInput}
+                  placeholder="Enter age"
+                  suffix="years"
                 />
-                <View style={styles.menuDivider} />
-                <MenuButton
-                  icon={Bell}
-                  title="Notifications"
-                  subtitle="Workout reminders"
+                <InputCard
+                  icon={Ruler}
+                  label="Height"
+                  value={heightInput}
+                  onChangeText={setHeightInput}
+                  placeholder="Enter height"
+                  suffix="cm"
                 />
-                <View style={styles.menuDivider} />
-                <MenuButton
-                  icon={Settings}
-                  title="Preferences"
-                  subtitle="App settings"
-                />
+                <View style={styles.inputCard}>
+                  <View style={styles.inputIconContainer}>
+                    <Scale size={20} color={Colors.primary} strokeWidth={2} />
+                  </View>
+                  <View style={styles.inputContent}>
+                    <Text style={styles.inputLabel}>Weight</Text>
+                    <View style={styles.inputRow}>
+                      <TextInput
+                        style={[styles.textInput, { flex: 1 }]}
+                        value={weightInput}
+                        onChangeText={setWeightInput}
+                        placeholder="Enter weight"
+                        placeholderTextColor={Colors.textLight}
+                        keyboardType="numeric"
+                      />
+                      <View style={styles.unitToggle}>
+                        <Pressable
+                          onPress={() => setWeightUnit('kg')}
+                          style={[
+                            styles.unitButton,
+                            profile.weightUnit === 'kg' && styles.unitButtonActive,
+                          ]}
+                        >
+                          <Text style={[
+                            styles.unitText,
+                            profile.weightUnit === 'kg' && styles.unitTextActive,
+                          ]}>kg</Text>
+                        </Pressable>
+                        <Pressable
+                          onPress={() => setWeightUnit('lb')}
+                          style={[
+                            styles.unitButton,
+                            profile.weightUnit === 'lb' && styles.unitButtonActive,
+                          ]}
+                        >
+                          <Text style={[
+                            styles.unitText,
+                            profile.weightUnit === 'lb' && styles.unitTextActive,
+                          ]}>lb</Text>
+                        </Pressable>
+                      </View>
+                    </View>
+                  </View>
+                </View>
               </View>
+
+              <Pressable onPress={handleSaveProfile} style={styles.saveButton}>
+                <LinearGradient
+                  colors={[Colors.primary, Colors.primaryDark]}
+                  style={styles.saveButtonGradient}
+                >
+                  {saveStatus === 'saving' ? (
+                    <Text style={styles.saveButtonText}>Saving...</Text>
+                  ) : saveStatus === 'saved' ? (
+                    <>
+                      <Check size={20} color={Colors.white} strokeWidth={2.5} />
+                      <Text style={styles.saveButtonText}>Profile Saved</Text>
+                    </>
+                  ) : (
+                    <>
+                      <Save size={20} color={Colors.white} strokeWidth={2} />
+                      <Text style={styles.saveButtonText}>Save Profile</Text>
+                    </>
+                  )}
+                </LinearGradient>
+              </Pressable>
             </View>
 
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Support</Text>
-              <View style={styles.menuContainer}>
-                <MenuButton
-                  icon={Award}
-                  title="Achievements"
-                  subtitle="View your badges"
-                />
-                <View style={styles.menuDivider} />
-                <MenuButton
-                  icon={HelpCircle}
-                  title="Help Center"
-                  subtitle="FAQs and support"
-                />
+              <View style={styles.sectionHeader}>
+                <Dumbbell size={18} color={Colors.textSecondary} strokeWidth={2} />
+                <Text style={styles.sectionTitle}>My Equipment</Text>
+              </View>
+              <Text style={styles.sectionSubtitle}>
+                Select the equipment you have at home to filter exercises
+              </Text>
+              <View style={styles.equipmentContainer}>
+                {EQUIPMENT.map((equipment) => (
+                  <EquipmentItem key={equipment.id} equipment={equipment} />
+                ))}
               </View>
             </View>
 
@@ -202,21 +372,35 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    paddingBottom: 30,
+    paddingBottom: 40,
   },
   content: {
     flex: 1,
   },
+  loadingContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  loadingText: {
+    fontSize: 16,
+    color: Colors.textSecondary,
+  },
   header: {
     paddingHorizontal: 20,
     paddingTop: 16,
-    paddingBottom: 24,
+    paddingBottom: 20,
   },
   title: {
     fontSize: 32,
     fontWeight: '700' as const,
     color: Colors.text,
     letterSpacing: -0.5,
+    marginBottom: 4,
+  },
+  subtitle: {
+    fontSize: 15,
+    color: Colors.textSecondary,
   },
   profileCard: {
     alignItems: 'center',
@@ -251,46 +435,15 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: Colors.textSecondary,
   },
-  statsRow: {
-    flexDirection: 'row',
-    paddingHorizontal: 20,
-    gap: 12,
-    marginBottom: 28,
-  },
-  statCard: {
-    flex: 1,
-    backgroundColor: Colors.white,
-    borderRadius: 16,
-    padding: 16,
-    alignItems: 'center',
-    shadowColor: Colors.shadowColor,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    elevation: 3,
-  },
-  statIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 10,
-  },
-  statValue: {
-    fontSize: 22,
-    fontWeight: '700' as const,
-    color: Colors.text,
-    marginBottom: 2,
-  },
-  statLabel: {
-    fontSize: 12,
-    color: Colors.textSecondary,
-    fontWeight: '500' as const,
-  },
   section: {
-    marginBottom: 24,
+    marginBottom: 28,
     paddingHorizontal: 20,
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 4,
   },
   sectionTitle: {
     fontSize: 14,
@@ -300,7 +453,13 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
     marginBottom: 12,
   },
-  menuContainer: {
+  sectionSubtitle: {
+    fontSize: 14,
+    color: Colors.textLight,
+    marginBottom: 16,
+    marginTop: -8,
+  },
+  inputsContainer: {
     backgroundColor: Colors.white,
     borderRadius: 16,
     shadowColor: Colors.shadowColor,
@@ -308,14 +467,17 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.08,
     shadowRadius: 8,
     elevation: 3,
+    marginBottom: 16,
   },
-  menuButton: {
+  inputCard: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingVertical: 16,
     paddingHorizontal: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.border,
   },
-  menuIconContainer: {
+  inputIconContainer: {
     width: 40,
     height: 40,
     borderRadius: 12,
@@ -324,23 +486,123 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginRight: 14,
   },
-  menuContent: {
+  inputContent: {
     flex: 1,
   },
-  menuTitle: {
+  inputLabel: {
+    fontSize: 12,
+    fontWeight: '600' as const,
+    color: Colors.textSecondary,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: 4,
+  },
+  inputRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  textInput: {
+    fontSize: 18,
+    fontWeight: '600' as const,
+    color: Colors.text,
+    padding: 0,
+    minWidth: 80,
+  },
+  inputSuffix: {
+    fontSize: 14,
+    color: Colors.textLight,
+    marginLeft: 8,
+  },
+  unitToggle: {
+    flexDirection: 'row',
+    backgroundColor: Colors.accent,
+    borderRadius: 8,
+    padding: 2,
+  },
+  unitButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 6,
+  },
+  unitButtonActive: {
+    backgroundColor: Colors.primary,
+  },
+  unitText: {
+    fontSize: 14,
+    fontWeight: '600' as const,
+    color: Colors.textSecondary,
+  },
+  unitTextActive: {
+    color: Colors.white,
+  },
+  saveButton: {
+    borderRadius: 16,
+    overflow: 'hidden',
+    shadowColor: Colors.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 12,
+    elevation: 5,
+  },
+  saveButtonGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 16,
+    gap: 10,
+  },
+  saveButtonText: {
+    fontSize: 16,
+    fontWeight: '700' as const,
+    color: Colors.white,
+  },
+  equipmentContainer: {
+    gap: 10,
+  },
+  equipmentItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: Colors.white,
+    borderRadius: 14,
+    padding: 16,
+    shadowColor: Colors.shadowColor,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 6,
+    elevation: 2,
+    borderWidth: 2,
+    borderColor: 'transparent',
+  },
+  equipmentItemSelected: {
+    borderColor: Colors.primary,
+    backgroundColor: Colors.accent,
+  },
+  equipmentContent: {
+    flex: 1,
+  },
+  equipmentLabel: {
     fontSize: 16,
     fontWeight: '600' as const,
     color: Colors.text,
+    marginBottom: 2,
   },
-  menuSubtitle: {
+  equipmentDescription: {
     fontSize: 13,
     color: Colors.textSecondary,
-    marginTop: 2,
   },
-  menuDivider: {
-    height: 1,
-    backgroundColor: Colors.border,
-    marginLeft: 70,
+  checkCircle: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: Colors.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginLeft: 12,
+  },
+  checkCircleSelected: {
+    backgroundColor: Colors.primary,
+    borderColor: Colors.primary,
   },
   version: {
     textAlign: 'center',
