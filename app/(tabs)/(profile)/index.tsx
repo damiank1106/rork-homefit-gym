@@ -201,7 +201,7 @@ export default function ProfileScreen() {
     inputRef,
     returnKeyType = 'default',
     onSubmitEditing,
-    blurOnSubmit = true,
+    blurOnSubmit = false,
     keyboardType = 'number-pad',
   }: {
     icon: React.ElementType;
@@ -349,7 +349,7 @@ export default function ProfileScreen() {
                       suffix="years"
                       inputRef={ageRef}
                       returnKeyType="default"
-                      blurOnSubmit
+                      blurOnSubmit={false}
                     />
                     <View style={styles.inputCard}>
                       <View style={styles.inputIconContainer}>
@@ -404,7 +404,7 @@ export default function ProfileScreen() {
                               placeholderTextColor={Colors.textLight}
                               keyboardType="decimal-pad"
                               returnKeyType="default"
-                              blurOnSubmit
+                              blurOnSubmit={false}
                               inputMode="decimal"
                               ref={heightCmRef}
                             />
@@ -422,7 +422,7 @@ export default function ProfileScreen() {
                                 placeholderTextColor={Colors.textLight}
                                 keyboardType="number-pad"
                                 returnKeyType="default"
-                                blurOnSubmit
+                                blurOnSubmit={false}
                                 inputMode="decimal"
                                 ref={heightFeetRef}
                               />
@@ -437,7 +437,7 @@ export default function ProfileScreen() {
                                 placeholderTextColor={Colors.textLight}
                                 keyboardType="decimal-pad"
                                 returnKeyType="default"
-                                blurOnSubmit
+                                blurOnSubmit={false}
                                 inputMode="decimal"
                                 ref={heightInchesRef}
                               />
@@ -461,7 +461,7 @@ export default function ProfileScreen() {
                             placeholderTextColor={Colors.textLight}
                             keyboardType="decimal-pad"
                             returnKeyType="default"
-                            blurOnSubmit
+                            blurOnSubmit={false}
                             inputMode="decimal"
                             ref={weightRef}
                           />
