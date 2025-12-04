@@ -11,8 +11,7 @@ import { UserProfile } from '@/src/types/profile';
  * 
  * Data is stored using AsyncStorage, which persists between app sessions.
  * 
- * FUTURE PHASE: We will add workout history storage here to track completed exercises,
- * which will power the calendar and statistics screens.
+ * Note: Workout history is stored separately in historyStorage.ts.
  */
 
 const PROFILE_STORAGE_KEY = 'homefit_user_profile';

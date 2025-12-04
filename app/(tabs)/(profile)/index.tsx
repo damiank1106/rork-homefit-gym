@@ -131,7 +131,6 @@ export default function ProfileScreen() {
     value,
     onChangeText,
     placeholder,
-    keyboardType = 'numeric',
     suffix,
   }: {
     icon: React.ElementType;
@@ -139,7 +138,6 @@ export default function ProfileScreen() {
     value: string;
     onChangeText: (text: string) => void;
     placeholder: string;
-    keyboardType?: 'numeric' | 'default';
     suffix?: string;
   }) => (
     <View style={styles.inputCard}>
@@ -155,7 +153,10 @@ export default function ProfileScreen() {
             onChangeText={onChangeText}
             placeholder={placeholder}
             placeholderTextColor={Colors.textLight}
-            keyboardType={keyboardType}
+            keyboardType="number-pad"
+            returnKeyType="done"
+            blurOnSubmit={false}
+            inputMode="numeric"
           />
           {suffix && <Text style={styles.inputSuffix}>{suffix}</Text>}
         </View>
@@ -233,7 +234,7 @@ export default function ProfileScreen() {
         <ScrollView
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.scrollContent}
-          keyboardShouldPersistTaps="handled"
+          keyboardShouldPersistTaps="always"
         >
           <Animated.View style={[styles.content, { opacity: fadeAnim }]}>
             <View style={styles.header}>
@@ -286,7 +287,10 @@ export default function ProfileScreen() {
                         onChangeText={setWeightInput}
                         placeholder="Enter weight"
                         placeholderTextColor={Colors.textLight}
-                        keyboardType="numeric"
+                        keyboardType="number-pad"
+                        returnKeyType="done"
+                        blurOnSubmit={false}
+                        inputMode="numeric"
                       />
                       <View style={styles.unitToggle}>
                         <Pressable
