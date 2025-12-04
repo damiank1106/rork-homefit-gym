@@ -8,6 +8,7 @@ import {
   Animated,
   TextInput,
   Keyboard,
+  TouchableWithoutFeedback,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -198,9 +199,9 @@ export default function ProfileScreen() {
     placeholder,
     suffix,
     inputRef,
-    returnKeyType = 'next',
+    returnKeyType = 'default',
     onSubmitEditing,
-    blurOnSubmit = false,
+    blurOnSubmit = true,
     keyboardType = 'number-pad',
   }: {
     icon: React.ElementType;
@@ -210,7 +211,7 @@ export default function ProfileScreen() {
     placeholder: string;
     suffix?: string;
     inputRef?: React.RefObject<TextInput>;
-    returnKeyType?: 'done' | 'next' | 'go';
+    returnKeyType?: 'default' | 'done' | 'next' | 'go';
     onSubmitEditing?: () => void;
     blurOnSubmit?: boolean;
     keyboardType?: 'number-pad' | 'decimal-pad';
@@ -308,238 +309,244 @@ export default function ProfileScreen() {
       style={styles.gradient}
     >
       <SafeAreaView style={styles.container} edges={['top']}>
-        <ScrollView
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={styles.scrollContent}
-          keyboardShouldPersistTaps="always"
-        >
-          <Animated.View style={[styles.content, { opacity: fadeAnim }]}>
-            <View style={styles.header}>
-              <Text style={styles.title}>Profile</Text>
-              <Text style={styles.subtitle}>Customize your fitness journey</Text>
-            </View>
+        <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
+          <View style={{ flex: 1 }}>
+            <ScrollView
+              showsVerticalScrollIndicator={false}
+              contentContainerStyle={styles.scrollContent}
+              keyboardShouldPersistTaps="handled"
+              keyboardDismissMode="on-drag"
+            >
 
-            <View style={styles.profileCard}>
-              <View style={styles.avatarContainer}>
-                <LinearGradient
-                  colors={[Colors.primary, Colors.secondary]}
-                  style={styles.avatar}
-                >
-                  <User size={40} color={Colors.white} strokeWidth={1.5} />
-                </LinearGradient>
-              </View>
-              <Text style={styles.profileName}>Fitness Enthusiast</Text>
-              <Text style={styles.profileEmail}>Welcome to HomeFit Gym</Text>
-            </View>
+              <Animated.View style={[styles.content, { opacity: fadeAnim }]}>
+                <View style={styles.header}>
+                  <Text style={styles.title}>Profile</Text>
+                  <Text style={styles.subtitle}>Customize your fitness journey</Text>
+                </View>
 
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Your Details</Text>
-              <View style={styles.inputsContainer}>
-                <InputCard
-                  icon={Calendar}
-                  label="Age"
-                  value={ageInput}
-                  onChangeText={setAgeInput}
-                  placeholder="Enter age"
-                  suffix="years"
-                  inputRef={ageRef}
-                  onSubmitEditing={() => {
-                    if (heightUnit === 'cm') {
-                      heightCmRef.current?.focus();
-                    } else {
-                      heightFeetRef.current?.focus();
-                    }
-                  }}
-                />
-                <View style={styles.inputCard}>
-                  <View style={styles.inputIconContainer}>
-                    <Ruler size={20} color={Colors.primary} strokeWidth={2} />
+                <View style={styles.profileCard}>
+                  <View style={styles.avatarContainer}>
+                    <LinearGradient
+                      colors={[Colors.primary, Colors.secondary]}
+                      style={styles.avatar}
+                    >
+                      <User size={40} color={Colors.white} strokeWidth={1.5} />
+                    </LinearGradient>
                   </View>
-                  <View style={styles.inputContent}>
-                    <View style={styles.inputHeaderRow}>
-                      <Text style={styles.inputLabel}>Height</Text>
-                      <View style={styles.unitToggle}>
-                        <Pressable
-                          onPress={() => handleHeightUnitChange('cm')}
-                          style={[
-                            styles.unitButton,
-                            heightUnit === 'cm' && styles.unitButtonActive,
-                          ]}
-                        >
-                          <Text
-                            style={[
-                              styles.unitText,
-                              heightUnit === 'cm' && styles.unitTextActive,
-                            ]}
-                          >
-                            cm
-                          </Text>
-                        </Pressable>
-                        <Pressable
-                          onPress={() => handleHeightUnitChange('imperial')}
-                          style={[
-                            styles.unitButton,
-                            heightUnit === 'imperial' && styles.unitButtonActive,
-                          ]}
-                        >
-                          <Text
-                            style={[
-                              styles.unitText,
-                              heightUnit === 'imperial' && styles.unitTextActive,
-                            ]}
-                          >
-                            ft / in
-                          </Text>
-                        </Pressable>
+                  <Text style={styles.profileName}>Fitness Enthusiast</Text>
+                  <Text style={styles.profileEmail}>Welcome to HomeFit Gym</Text>
+                </View>
+
+                <View style={styles.section}>
+                  <Text style={styles.sectionTitle}>Your Details</Text>
+                  <View style={styles.inputsContainer}>
+                    <InputCard
+                      icon={Calendar}
+                      label="Age"
+                      value={ageInput}
+                      onChangeText={setAgeInput}
+                      placeholder="Enter age"
+                      suffix="years"
+                      inputRef={ageRef}
+                      returnKeyType="default"
+                      blurOnSubmit
+                    />
+                    <View style={styles.inputCard}>
+                      <View style={styles.inputIconContainer}>
+                        <Ruler size={20} color={Colors.primary} strokeWidth={2} />
+                      </View>
+                      <View style={styles.inputContent}>
+                        <View style={styles.inputHeaderRow}>
+                          <Text style={styles.inputLabel}>Height</Text>
+                          <View style={styles.unitToggle}>
+                            <Pressable
+                              onPress={() => handleHeightUnitChange('cm')}
+                              style={[
+                                styles.unitButton,
+                                heightUnit === 'cm' && styles.unitButtonActive,
+                              ]}
+                            >
+                              <Text
+                                style={[
+                                  styles.unitText,
+                                  heightUnit === 'cm' && styles.unitTextActive,
+                                ]}
+                              >
+                                cm
+                              </Text>
+                            </Pressable>
+                            <Pressable
+                              onPress={() => handleHeightUnitChange('imperial')}
+                              style={[
+                                styles.unitButton,
+                                heightUnit === 'imperial' && styles.unitButtonActive,
+                              ]}
+                            >
+                              <Text
+                                style={[
+                                  styles.unitText,
+                                  heightUnit === 'imperial' && styles.unitTextActive,
+                                ]}
+                              >
+                                ft / in
+                              </Text>
+                            </Pressable>
+                          </View>
+                        </View>
+
+                        {heightUnit === 'cm' ? (
+                          <View style={styles.inputRow}>
+                            <TextInput
+                              style={styles.textInput}
+                              value={heightInput}
+                              onChangeText={setHeightInput}
+                              placeholder="Enter height"
+                              placeholderTextColor={Colors.textLight}
+                              keyboardType="decimal-pad"
+                              returnKeyType="default"
+                              blurOnSubmit
+                              inputMode="decimal"
+                              ref={heightCmRef}
+                            />
+                            <Text style={styles.inputSuffix}>cm</Text>
+                          </View>
+                        ) : (
+                          <View style={styles.heightImperialRow}>
+                            <View style={styles.heightSubField}>
+                              <Text style={styles.heightSubLabel}>Feet</Text>
+                              <TextInput
+                                style={styles.textInput}
+                                value={heightFeetInput}
+                                onChangeText={setHeightFeetInput}
+                                placeholder="0"
+                                placeholderTextColor={Colors.textLight}
+                                keyboardType="number-pad"
+                                returnKeyType="default"
+                                blurOnSubmit
+                                inputMode="decimal"
+                                ref={heightFeetRef}
+                              />
+                            </View>
+                            <View style={styles.heightSubField}>
+                              <Text style={styles.heightSubLabel}>Inches</Text>
+                              <TextInput
+                                style={styles.textInput}
+                                value={heightInchesInput}
+                                onChangeText={setHeightInchesInput}
+                                placeholder="0"
+                                placeholderTextColor={Colors.textLight}
+                                keyboardType="decimal-pad"
+                                returnKeyType="default"
+                                blurOnSubmit
+                                inputMode="decimal"
+                                ref={heightInchesRef}
+                              />
+                            </View>
+                          </View>
+                        )}
                       </View>
                     </View>
-
-                    {heightUnit === 'cm' ? (
-                      <View style={styles.inputRow}>
-                        <TextInput
-                          style={styles.textInput}
-                          value={heightInput}
-                          onChangeText={setHeightInput}
-                          placeholder="Enter height"
-                          placeholderTextColor={Colors.textLight}
-                          keyboardType="decimal-pad"
-                          returnKeyType="next"
-                          blurOnSubmit={false}
-                          inputMode="decimal"
-                          ref={heightCmRef}
-                          onSubmitEditing={() => weightRef.current?.focus()}
-                        />
-                        <Text style={styles.inputSuffix}>cm</Text>
+                    <View style={styles.inputCard}>
+                      <View style={styles.inputIconContainer}>
+                        <Scale size={20} color={Colors.primary} strokeWidth={2} />
                       </View>
-                    ) : (
-                      <View style={styles.heightImperialRow}>
-                        <View style={styles.heightSubField}>
-                          <Text style={styles.heightSubLabel}>Feet</Text>
+                      <View style={styles.inputContent}>
+                        <Text style={styles.inputLabel}>Weight</Text>
+                        <View style={styles.inputRow}>
                           <TextInput
-                            style={styles.textInput}
-                            value={heightFeetInput}
-                            onChangeText={setHeightFeetInput}
-                            placeholder="0"
-                            placeholderTextColor={Colors.textLight}
-                            keyboardType="number-pad"
-                            returnKeyType="next"
-                            blurOnSubmit={false}
-                            inputMode="decimal"
-                            ref={heightFeetRef}
-                            onSubmitEditing={() => heightInchesRef.current?.focus()}
-                          />
-                        </View>
-                        <View style={styles.heightSubField}>
-                          <Text style={styles.heightSubLabel}>Inches</Text>
-                          <TextInput
-                            style={styles.textInput}
-                            value={heightInchesInput}
-                            onChangeText={setHeightInchesInput}
-                            placeholder="0"
+                            style={[styles.textInput, { flex: 1 }]}
+                            value={weightInput}
+                            onChangeText={setWeightInput}
+                            placeholder="Enter weight"
                             placeholderTextColor={Colors.textLight}
                             keyboardType="decimal-pad"
-                            returnKeyType="next"
-                            blurOnSubmit={false}
+                            returnKeyType="default"
+                            blurOnSubmit
                             inputMode="decimal"
-                            ref={heightInchesRef}
-                            onSubmitEditing={() => weightRef.current?.focus()}
+                            ref={weightRef}
                           />
+                          <View style={styles.unitToggle}>
+                            <Pressable
+                              onPress={() => setWeightUnit('kg')}
+                              style={[
+                                styles.unitButton,
+                                profile.weightUnit === 'kg' && styles.unitButtonActive,
+                              ]}
+                            >
+                              <Text
+                                style={[
+                                  styles.unitText,
+                                  profile.weightUnit === 'kg' && styles.unitTextActive,
+                                ]}
+                              >
+                                kg
+                              </Text>
+                            </Pressable>
+                            <Pressable
+                              onPress={() => setWeightUnit('lb')}
+                              style={[
+                                styles.unitButton,
+                                profile.weightUnit === 'lb' && styles.unitButtonActive,
+                              ]}
+                            >
+                              <Text
+                                style={[
+                                  styles.unitText,
+                                  profile.weightUnit === 'lb' && styles.unitTextActive,
+                                ]}
+                              >
+                                lb
+                              </Text>
+                            </Pressable>
+                          </View>
                         </View>
-                      </View>
-                    )}
-                  </View>
-                </View>
-                <View style={styles.inputCard}>
-                  <View style={styles.inputIconContainer}>
-                    <Scale size={20} color={Colors.primary} strokeWidth={2} />
-                  </View>
-                  <View style={styles.inputContent}>
-                    <Text style={styles.inputLabel}>Weight</Text>
-                    <View style={styles.inputRow}>
-                      <TextInput
-                        style={[styles.textInput, { flex: 1 }]}
-                        value={weightInput}
-                        onChangeText={setWeightInput}
-                        placeholder="Enter weight"
-                        placeholderTextColor={Colors.textLight}
-                        keyboardType="decimal-pad"
-                        returnKeyType="done"
-                        blurOnSubmit
-                        inputMode="decimal"
-                        ref={weightRef}
-                        onSubmitEditing={Keyboard.dismiss}
-                      />
-                      <View style={styles.unitToggle}>
-                        <Pressable
-                          onPress={() => setWeightUnit('kg')}
-                          style={[
-                            styles.unitButton,
-                            profile.weightUnit === 'kg' && styles.unitButtonActive,
-                          ]}
-                        >
-                          <Text style={[
-                            styles.unitText,
-                            profile.weightUnit === 'kg' && styles.unitTextActive,
-                          ]}>kg</Text>
-                        </Pressable>
-                        <Pressable
-                          onPress={() => setWeightUnit('lb')}
-                          style={[
-                            styles.unitButton,
-                            profile.weightUnit === 'lb' && styles.unitButtonActive,
-                          ]}
-                        >
-                          <Text style={[
-                            styles.unitText,
-                            profile.weightUnit === 'lb' && styles.unitTextActive,
-                          ]}>lb</Text>
-                        </Pressable>
                       </View>
                     </View>
                   </View>
+
+                  <Pressable onPress={handleSaveProfile} style={styles.saveButton}>
+                    <LinearGradient
+                      colors={[Colors.primary, Colors.primaryDark]}
+                      style={styles.saveButtonGradient}
+                    >
+                      {saveStatus === 'saving' ? (
+                        <Text style={styles.saveButtonText}>Saving...</Text>
+                      ) : saveStatus === 'saved' ? (
+                        <>
+                          <Check size={20} color={Colors.white} strokeWidth={2.5} />
+                          <Text style={styles.saveButtonText}>Profile Saved</Text>
+                        </>
+                      ) : (
+                        <>
+                          <Save size={20} color={Colors.white} strokeWidth={2} />
+                          <Text style={styles.saveButtonText}>Save Profile</Text>
+                        </>
+                      )}
+                    </LinearGradient>
+                  </Pressable>
                 </View>
-              </View>
 
-              <Pressable onPress={handleSaveProfile} style={styles.saveButton}>
-                <LinearGradient
-                  colors={[Colors.primary, Colors.primaryDark]}
-                  style={styles.saveButtonGradient}
-                >
-                  {saveStatus === 'saving' ? (
-                    <Text style={styles.saveButtonText}>Saving...</Text>
-                  ) : saveStatus === 'saved' ? (
-                    <>
-                      <Check size={20} color={Colors.white} strokeWidth={2.5} />
-                      <Text style={styles.saveButtonText}>Profile Saved</Text>
-                    </>
-                  ) : (
-                    <>
-                      <Save size={20} color={Colors.white} strokeWidth={2} />
-                      <Text style={styles.saveButtonText}>Save Profile</Text>
-                    </>
-                  )}
-                </LinearGradient>
-              </Pressable>
-            </View>
+                <View style={styles.section}>
+                  <View style={styles.sectionHeader}>
+                    <Dumbbell size={18} color={Colors.textSecondary} strokeWidth={2} />
+                    <Text style={styles.sectionTitle}>My Equipment</Text>
+                  </View>
+                  <Text style={styles.sectionSubtitle}>
+                    Select the equipment you have at home to filter exercises
+                  </Text>
+                  <View style={styles.equipmentContainer}>
+                    {EQUIPMENT.map((equipment) => (
+                      <EquipmentItem key={equipment.id} equipment={equipment} />
+                    ))}
+                  </View>
+                </View>
 
-            <View style={styles.section}>
-              <View style={styles.sectionHeader}>
-                <Dumbbell size={18} color={Colors.textSecondary} strokeWidth={2} />
-                <Text style={styles.sectionTitle}>My Equipment</Text>
-              </View>
-              <Text style={styles.sectionSubtitle}>
-                Select the equipment you have at home to filter exercises
-              </Text>
-              <View style={styles.equipmentContainer}>
-                {EQUIPMENT.map((equipment) => (
-                  <EquipmentItem key={equipment.id} equipment={equipment} />
-                ))}
-              </View>
-            </View>
+                <Text style={styles.version}>HomeFit Gym v1.0.0</Text>
+              </Animated.View>
+            </ScrollView>
+          </View>
+        </TouchableWithoutFeedback>
 
-            <Text style={styles.version}>HomeFit Gym v1.0.0</Text>
-          </Animated.View>
-        </ScrollView>
       </SafeAreaView>
     </LinearGradient>
   );
