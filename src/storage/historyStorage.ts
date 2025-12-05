@@ -34,6 +34,13 @@ export async function getExerciseLogs(): Promise<ExerciseLog[]> {
     return logs;
   } catch (error) {
     console.error('Error loading exercise logs:', error);
+    // Clear corrupted data
+    try {
+      await AsyncStorage.removeItem(HISTORY_STORAGE_KEY);
+      console.log('Cleared corrupted exercise logs');
+    } catch (clearError) {
+      console.error('Error clearing corrupted logs:', clearError);
+    }
     return [];
   }
 }

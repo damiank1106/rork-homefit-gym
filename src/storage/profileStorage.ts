@@ -31,6 +31,13 @@ export async function loadUserProfile(): Promise<UserProfile | null> {
     return profile;
   } catch (error) {
     console.error('Error loading user profile:', error);
+    // Clear corrupted data
+    try {
+      await AsyncStorage.removeItem(PROFILE_STORAGE_KEY);
+      console.log('Cleared corrupted profile data');
+    } catch (clearError) {
+      console.error('Error clearing corrupted profile:', clearError);
+    }
     return null;
   }
 }

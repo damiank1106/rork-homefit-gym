@@ -21,10 +21,6 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   const systemColorScheme = useColorScheme();
   const [theme, setThemeState] = useState<Theme>('light'); // Default to light
 
-  useEffect(() => {
-    loadTheme();
-  }, []);
-
   const loadTheme = useCallback(async () => {
     try {
       const storedTheme = await AsyncStorage.getItem(THEME_STORAGE_KEY);
@@ -35,8 +31,18 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
       }
     } catch (error) {
       console.log('Error loading theme:', error);
+      // Clear corrupted theme data
+      try {
+        await AsyncStorage.removeItem(THEME_STORAGE_KEY);
+      } catch (clearError) {
+        console.log('Error clearing theme:', clearError);
+      }
     }
   }, [systemColorScheme]);
+
+  useEffect(() => {
+    loadTheme();
+  }, [loadTheme]);
 
   const setTheme = (newTheme: Theme) => {
     setThemeState(newTheme);
