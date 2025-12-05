@@ -21,8 +21,15 @@ export async function loadUserProfile(): Promise<UserProfile | null> {
     console.log('Loading user profile from storage...');
     const storedData = await AsyncStorage.getItem(PROFILE_STORAGE_KEY);
     
-    if (!storedData) {
+    if (!storedData || storedData === 'null' || storedData === 'undefined') {
       console.log('No profile found in storage');
+      return null;
+    }
+    
+    // Validate that stored data looks like JSON before parsing
+    if (!storedData.startsWith('{') && !storedData.startsWith('[')) {
+      console.error('Invalid JSON format in storage:', storedData.substring(0, 50));
+      await AsyncStorage.removeItem(PROFILE_STORAGE_KEY);
       return null;
     }
     

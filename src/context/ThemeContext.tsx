@@ -24,8 +24,17 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   const loadTheme = useCallback(async () => {
     try {
       const storedTheme = await AsyncStorage.getItem(THEME_STORAGE_KEY);
-      if (storedTheme === 'light' || storedTheme === 'dark') {
+      
+      // Check for valid theme values
+      if (storedTheme && (storedTheme === 'light' || storedTheme === 'dark')) {
         setThemeState(storedTheme);
+      } else if (storedTheme && storedTheme !== 'null' && storedTheme !== 'undefined') {
+        // Invalid stored theme, clear it
+        console.log('Invalid theme value in storage:', storedTheme);
+        await AsyncStorage.removeItem(THEME_STORAGE_KEY);
+        if (systemColorScheme) {
+          setThemeState(systemColorScheme);
+        }
       } else if (systemColorScheme) {
         setThemeState(systemColorScheme);
       }

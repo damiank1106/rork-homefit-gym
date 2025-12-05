@@ -24,8 +24,15 @@ export async function getExerciseLogs(): Promise<ExerciseLog[]> {
     console.log('Loading exercise logs from storage...');
     const storedData = await AsyncStorage.getItem(HISTORY_STORAGE_KEY);
     
-    if (!storedData) {
+    if (!storedData || storedData === 'null' || storedData === 'undefined') {
       console.log('No exercise logs found in storage');
+      return [];
+    }
+    
+    // Validate that stored data looks like JSON before parsing
+    if (!storedData.startsWith('{') && !storedData.startsWith('[')) {
+      console.error('Invalid JSON format in storage:', storedData.substring(0, 50));
+      await AsyncStorage.removeItem(HISTORY_STORAGE_KEY);
       return [];
     }
     
