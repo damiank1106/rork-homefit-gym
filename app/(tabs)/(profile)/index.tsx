@@ -263,6 +263,16 @@ export default function ProfileScreen() {
     [isCompactModal],
   );
 
+  const pickerColumnsStyle = useMemo(
+    () => [styles.pickerColumns, isCompactModal && styles.pickerColumnsStacked],
+    [isCompactModal],
+  );
+
+  const pickerColumnStyle = useMemo(
+    () => [styles.pickerColumn, isCompactModal && styles.pickerColumnFullWidth],
+    [isCompactModal],
+  );
+
   const heightDisplay = useMemo(() => {
     if (heightUnit === 'cm') {
       return heightInput ? `${heightInput} cm` : '';
