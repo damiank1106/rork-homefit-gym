@@ -253,14 +253,14 @@ export default function ProfileScreen() {
       : 'Enter a valid date (YYYY-MM-DD)'
     : 'Add your birth date to calculate age';
 
-  const birthdayOptionBaseStyle = useMemo(
-    () => [styles.pickerOptionText, isSmallScreen && styles.pickerOptionTextSmall].filter(Boolean),
-    [isSmallScreen],
+  const pickerColumnsStyle = useMemo(
+    () => [styles.pickerColumns, isCompactModal && styles.pickerColumnsStacked],
+    [isCompactModal],
   );
 
-  const birthdayOptionSelectedStyle = useMemo(
-    () => [styles.pickerOptionTextSelected, isSmallScreen && styles.pickerOptionTextSmall].filter(Boolean),
-    [isSmallScreen],
+  const pickerColumnStyle = useMemo(
+    () => [styles.pickerColumn, isCompactModal && styles.pickerColumnFullWidth],
+    [isCompactModal],
   );
 
   const pickerColumnsStyle = useMemo(
@@ -528,82 +528,103 @@ export default function ProfileScreen() {
               <View style={pickerColumnsStyle}>
                 <View style={pickerColumnStyle}>
                   <Text style={styles.pickerLabel}>Day</Text>
-                  <ScrollView contentContainerStyle={styles.pickerList} showsVerticalScrollIndicator={false}>
+                  <ScrollView
+                    style={styles.pickerScrollable}
+                    contentContainerStyle={styles.pickerList}
+                    showsVerticalScrollIndicator={false}
+                  >
                     {Array.from({ length: daysInMonth }, (_, index) => index + 1).map(day => (
-                    <Pressable
-                      key={day}
-                      onPress={() => setTempDay(day)}
-                      style={[styles.pickerOption, tempDay === day && styles.pickerOptionSelected]}
-                    >
-                      <Text
-                        style={[...birthdayOptionBaseStyle, tempDay === day && birthdayOptionSelectedStyle]}
-                      >
-                        {day}
-                      </Text>
-                    </Pressable>
-                  ))}
-                </ScrollView>
-              </View>
-
-                <View style={pickerColumnStyle}>
-                  <Text style={styles.pickerLabel}>Month</Text>
-                  <ScrollView contentContainerStyle={styles.pickerList} showsVerticalScrollIndicator={false}>
-                    {[
-                    'January',
-                    'February',
-                    'March',
-                    'April',
-                    'May',
-                    'June',
-                    'July',
-                    'August',
-                    'September',
-                    'October',
-                    'November',
-                    'December',
-                  ].map((monthName, index) => {
-                    const monthNumber = index + 1;
-                    return (
                       <Pressable
-                        key={monthName}
-                        onPress={() => setTempMonth(monthNumber)}
-                        style={[
-                          styles.pickerOption,
-                          tempMonth === monthNumber && styles.pickerOptionSelected,
-                        ]}
+                        key={day}
+                        onPress={() => setTempDay(day)}
+                        style={[styles.pickerOption, tempDay === day && styles.pickerOptionSelected]}
                       >
                         <Text
                           style={[
-                            ...birthdayOptionBaseStyle,
-                            tempMonth === monthNumber && birthdayOptionSelectedStyle,
+                            styles.pickerOptionText,
+                            isSmallScreen && styles.pickerOptionTextSmall,
+                            tempDay === day && styles.pickerOptionTextSelected,
                           ]}
                         >
-                          {monthName}
+                          {day}
                         </Text>
                       </Pressable>
-                    );
-                  })}
-                </ScrollView>
-              </View>
+                    ))}
+                  </ScrollView>
+                </View>
+
+                <View style={pickerColumnStyle}>
+                  <Text style={styles.pickerLabel}>Month</Text>
+                  <ScrollView
+                    style={styles.pickerScrollable}
+                    contentContainerStyle={styles.pickerList}
+                    showsVerticalScrollIndicator={false}
+                  >
+                    {[
+                      'January',
+                      'February',
+                      'March',
+                      'April',
+                      'May',
+                      'June',
+                      'July',
+                      'August',
+                      'September',
+                      'October',
+                      'November',
+                      'December',
+                    ].map((monthName, index) => {
+                      const monthNumber = index + 1;
+                      return (
+                        <Pressable
+                          key={monthName}
+                          onPress={() => setTempMonth(monthNumber)}
+                          style={[
+                            styles.pickerOption,
+                            tempMonth === monthNumber && styles.pickerOptionSelected,
+                          ]}
+                        >
+                          <Text
+                            style={[
+                              styles.pickerOptionText,
+                              isSmallScreen && styles.pickerOptionTextSmall,
+                              tempMonth === monthNumber && styles.pickerOptionTextSelected,
+                            ]}
+                          >
+                            {monthName}
+                          </Text>
+                        </Pressable>
+                      );
+                    })}
+                  </ScrollView>
+                </View>
 
                 <View style={pickerColumnStyle}>
                   <Text style={styles.pickerLabel}>Year</Text>
-                  <ScrollView contentContainerStyle={styles.pickerList} showsVerticalScrollIndicator={false}>
+                  <ScrollView
+                    style={styles.pickerScrollable}
+                    contentContainerStyle={styles.pickerList}
+                    showsVerticalScrollIndicator={false}
+                  >
                     {Array.from({ length: 100 }, (_, index) => new Date().getFullYear() - index).map(year => (
-                    <Pressable
-                      key={year}
-                      onPress={() => setTempYear(year)}
-                      style={[styles.pickerOption, tempYear === year && styles.pickerOptionSelected]}
-                    >
-                      <Text
-                        style={[...birthdayOptionBaseStyle, tempYear === year && birthdayOptionSelectedStyle]}
+                      <Pressable
+                        key={year}
+                        onPress={() => setTempYear(year)}
+                        style={[styles.pickerOption, tempYear === year && styles.pickerOptionSelected]}
                       >
-                        {year}
-                      </Text>
-                    </Pressable>
-                  ))}
-                </ScrollView>
-              </View>
+                        <Text
+                          style={[
+                            styles.pickerOptionText,
+                            isSmallScreen && styles.pickerOptionTextSmall,
+                            tempYear === year && styles.pickerOptionTextSelected,
+                          ]}
+                        >
+                          {year}
+                        </Text>
+                      </Pressable>
+                    ))}
+                  </ScrollView>
+                </View>
               </View>
 
               <View style={styles.modalActions}>
@@ -661,7 +682,11 @@ export default function ProfileScreen() {
                     onChangeText={handleHeightCmInputChange}
                     placeholder="Enter height"
                   />
-                  <ScrollView contentContainerStyle={styles.pickerList} showsVerticalScrollIndicator={false}>
+                  <ScrollView
+                    style={styles.pickerScrollable}
+                    contentContainerStyle={styles.pickerList}
+                    showsVerticalScrollIndicator={false}
+                  >
                     {Array.from({ length: 101 }, (_, index) => 120 + index).map(cm => (
                       <Pressable
                         key={cm}
@@ -690,7 +715,11 @@ export default function ProfileScreen() {
                     onChangeText={handleHeightFeetInputChange}
                     placeholder="Enter feet"
                   />
-                  <ScrollView contentContainerStyle={styles.pickerList} showsVerticalScrollIndicator={false}>
+                  <ScrollView
+                    style={styles.pickerScrollable}
+                    contentContainerStyle={styles.pickerList}
+                    showsVerticalScrollIndicator={false}
+                  >
                     {Array.from({ length: 5 }, (_, index) => 4 + index).map(feet => (
                       <Pressable
                         key={feet}
@@ -716,7 +745,11 @@ export default function ProfileScreen() {
                     onChangeText={handleHeightInchesInputChange}
                     placeholder="Enter inches"
                   />
-                  <ScrollView contentContainerStyle={styles.pickerList} showsVerticalScrollIndicator={false}>
+                  <ScrollView
+                    style={styles.pickerScrollable}
+                    contentContainerStyle={styles.pickerList}
+                    showsVerticalScrollIndicator={false}
+                  >
                     {Array.from({ length: 12 }, (_, index) => index).map(inches => (
                       <Pressable
                         key={inches}
@@ -789,7 +822,11 @@ export default function ProfileScreen() {
                   onChangeText={handleWeightInputChange}
                   placeholder={`Enter weight in ${tempWeightUnit}`}
                 />
-                <ScrollView contentContainerStyle={styles.pickerList} showsVerticalScrollIndicator={false}>
+                <ScrollView
+                  style={styles.pickerScrollable}
+                  contentContainerStyle={styles.pickerList}
+                  showsVerticalScrollIndicator={false}
+                >
                   {(tempWeightUnit === 'kg'
                     ? Array.from({ length: 171 }, (_, index) => 30 + index)
                     : Array.from({ length: 331 }, (_, index) => 70 + index)
@@ -1284,6 +1321,9 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     padding: 10,
     maxHeight: 260,
+  },
+  pickerScrollable: {
+    maxHeight: 240,
   },
   pickerColumnFullWidth: {
     width: '100%',
