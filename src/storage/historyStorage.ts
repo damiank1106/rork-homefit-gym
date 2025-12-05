@@ -52,12 +52,15 @@ export async function addExerciseLog(log: ExerciseLog): Promise<void> {
   }
 }
 
-export async function clearAllLogs(): Promise<void> {
+
+export async function deleteExerciseLog(logId: string): Promise<void> {
   try {
-    console.log('Clearing all exercise logs (debug only)...');
-    await AsyncStorage.removeItem(HISTORY_STORAGE_KEY);
-    console.log('All logs cleared');
+    console.log('Deleting exercise log:', logId);
+    const existingLogs = await getExerciseLogs();
+    const updatedLogs = existingLogs.filter((log) => log.id !== logId);
+    await AsyncStorage.setItem(HISTORY_STORAGE_KEY, JSON.stringify(updatedLogs));
+    console.log('Exercise log deleted successfully');
   } catch (error) {
-    console.error('Error clearing logs:', error);
+    console.error('Error deleting exercise log:', error);
   }
 }

@@ -1,15 +1,18 @@
 import { Tabs } from 'expo-router';
-import { Home, Dumbbell, User, BarChart3 } from 'lucide-react-native';
-import React from 'react';
+import { Home, Dumbbell, User, BarChart3, Settings } from 'lucide-react-native';
+import React, { useMemo } from 'react';
 import { StyleSheet, View } from 'react-native';
-import Colors from '@/constants/colors';
+import { useTheme } from '@/src/context/ThemeContext';
 
 export default function TabLayout() {
+  const { colors } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
+
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: Colors.primary,
-        tabBarInactiveTintColor: Colors.textLight,
+        tabBarActiveTintColor: colors.primary,
+        tabBarInactiveTintColor: colors.textLight,
         headerShown: false,
         tabBarStyle: styles.tabBar,
         tabBarLabelStyle: styles.tabBarLabel,
@@ -60,15 +63,26 @@ export default function TabLayout() {
           ),
         }}
       />
+      <Tabs.Screen
+        name="settings"
+        options={{
+          title: 'Settings',
+          tabBarIcon: ({ color, size }) => (
+            <View style={styles.iconWrapper}>
+              <Settings size={size} color={color} strokeWidth={2.2} />
+            </View>
+          ),
+        }}
+      />
     </Tabs>
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: any) => StyleSheet.create({
   tabBar: {
-    backgroundColor: Colors.white,
+    backgroundColor: colors.card,
     borderTopWidth: 0,
-    shadowColor: Colors.shadowColor,
+    shadowColor: colors.shadowColor,
     shadowOffset: { width: 0, height: -4 },
     shadowOpacity: 0.08,
     shadowRadius: 16,
@@ -77,7 +91,7 @@ const styles = StyleSheet.create({
   },
   tabBarLabel: {
     fontSize: 11,
-    fontWeight: '600' as const,
+    fontWeight: '600',
     marginTop: 4,
   },
   tabBarItem: {

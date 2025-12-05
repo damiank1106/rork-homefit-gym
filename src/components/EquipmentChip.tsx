@@ -1,4 +1,4 @@
-import React, { useRef } from 'react';
+import React, { useRef, useMemo } from 'react';
 import { Text, StyleSheet, Pressable, Animated, View } from 'react-native';
 import {
   User,
@@ -12,7 +12,7 @@ import {
   CircleDot,
   Cylinder,
 } from 'lucide-react-native';
-import Colors from '@/constants/colors';
+import { useTheme } from '@/src/context/ThemeContext';
 import { Equipment } from '@/src/types/training';
 
 interface EquipmentChipProps {
@@ -35,6 +35,8 @@ const EQUIPMENT_ICONS: Record<string, React.ElementType> = {
 };
 
 export default function EquipmentChip({ equipment, isSelected, onPress }: EquipmentChipProps) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const scaleAnim = useRef(new Animated.Value(1)).current;
   const IconComponent = EQUIPMENT_ICONS[equipment.id] || Circle;
 
@@ -66,7 +68,7 @@ export default function EquipmentChip({ equipment, isSelected, onPress }: Equipm
         <View style={[styles.iconContainer, isSelected && styles.iconContainerSelected]}>
           <IconComponent
             size={16}
-            color={isSelected ? Colors.white : Colors.textSecondary}
+            color={isSelected ? colors.white : colors.textSecondary}
           />
         </View>
         <Text style={[styles.chipText, isSelected && styles.chipTextSelected]}>
@@ -77,28 +79,28 @@ export default function EquipmentChip({ equipment, isSelected, onPress }: Equipm
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: any) => StyleSheet.create({
   chip: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 14,
     paddingVertical: 10,
     borderRadius: 20,
-    backgroundColor: Colors.card,
+    backgroundColor: colors.card,
     borderWidth: 1.5,
-    borderColor: Colors.border,
+    borderColor: colors.border,
     marginRight: 10,
     gap: 8,
   },
   chipSelected: {
-    backgroundColor: Colors.secondary,
-    borderColor: Colors.secondary,
+    backgroundColor: colors.secondary,
+    borderColor: colors.secondary,
   },
   iconContainer: {
     width: 24,
     height: 24,
     borderRadius: 12,
-    backgroundColor: Colors.backgroundSecondary,
+    backgroundColor: colors.backgroundSecondary,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -107,11 +109,11 @@ const styles = StyleSheet.create({
   },
   chipText: {
     fontSize: 13,
-    fontWeight: '500' as const,
-    color: Colors.textSecondary,
+    fontWeight: '500',
+    color: colors.textSecondary,
   },
   chipTextSelected: {
-    color: Colors.white,
-    fontWeight: '600' as const,
+    color: colors.white,
+    fontWeight: '600',
   },
 });

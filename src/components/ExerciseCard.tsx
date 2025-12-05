@@ -1,4 +1,4 @@
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect, useMemo } from 'react';
 import {
   View,
   Text,
@@ -7,7 +7,7 @@ import {
   Animated,
 } from 'react-native';
 import { Image } from 'expo-image';
-import Colors from '@/constants/colors';
+import { useTheme } from '@/src/context/ThemeContext';
 import { Exercise, BODY_AREA_LABELS } from '@/src/types/training';
 
 interface ExerciseCardProps {
@@ -17,6 +17,8 @@ interface ExerciseCardProps {
 }
 
 export default function ExerciseCard({ exercise, onPress, index }: ExerciseCardProps) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const scaleAnim = useRef(new Animated.Value(1)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const translateY = useRef(new Animated.Value(30)).current;
@@ -115,16 +117,16 @@ export default function ExerciseCard({ exercise, onPress, index }: ExerciseCardP
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: any) => StyleSheet.create({
   cardWrapper: {
     width: '48%',
     marginBottom: 16,
   },
   card: {
-    backgroundColor: Colors.card,
+    backgroundColor: colors.card,
     borderRadius: 20,
     overflow: 'hidden',
-    shadowColor: Colors.shadowColor,
+    shadowColor: colors.shadowColor,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.15,
     shadowRadius: 12,
@@ -153,16 +155,16 @@ const styles = StyleSheet.create({
   },
   durationText: {
     fontSize: 12,
-    fontWeight: '600' as const,
-    color: Colors.text,
+    fontWeight: '600',
+    color: '#2D2D3A', // Force dark text on white badge
   },
   content: {
     padding: 14,
   },
   name: {
     fontSize: 15,
-    fontWeight: '600' as const,
-    color: Colors.text,
+    fontWeight: '600',
+    color: colors.text,
     marginBottom: 8,
   },
   metaRow: {
@@ -172,8 +174,8 @@ const styles = StyleSheet.create({
   },
   bodyArea: {
     fontSize: 12,
-    color: Colors.textSecondary,
-    fontWeight: '500' as const,
+    color: colors.textSecondary,
+    fontWeight: '500',
   },
   intensityContainer: {
     flexDirection: 'row',
@@ -183,9 +185,9 @@ const styles = StyleSheet.create({
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: Colors.border,
+    backgroundColor: colors.border,
   },
   intensityDotActive: {
-    backgroundColor: Colors.primary,
+    backgroundColor: colors.primary,
   },
 });

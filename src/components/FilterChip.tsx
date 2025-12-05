@@ -1,6 +1,6 @@
-import React, { useRef } from 'react';
+import React, { useRef, useMemo } from 'react';
 import { Text, StyleSheet, Pressable, Animated } from 'react-native';
-import Colors from '@/constants/colors';
+import { useTheme } from '@/src/context/ThemeContext';
 
 interface FilterChipProps {
   label: string;
@@ -10,6 +10,8 @@ interface FilterChipProps {
 }
 
 export default function FilterChip({ label, isSelected, onPress, testID }: FilterChipProps) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const scaleAnim = useRef(new Animated.Value(1)).current;
 
   const handlePressIn = () => {
@@ -45,27 +47,27 @@ export default function FilterChip({ label, isSelected, onPress, testID }: Filte
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: any) => StyleSheet.create({
   chip: {
     paddingHorizontal: 16,
     paddingVertical: 10,
     borderRadius: 20,
-    backgroundColor: Colors.card,
+    backgroundColor: colors.card,
     borderWidth: 1.5,
-    borderColor: Colors.border,
+    borderColor: colors.border,
     marginRight: 10,
   },
   chipSelected: {
-    backgroundColor: Colors.primary,
-    borderColor: Colors.primary,
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
   },
   chipText: {
     fontSize: 14,
-    fontWeight: '500' as const,
-    color: Colors.textSecondary,
+    fontWeight: '500',
+    color: colors.textSecondary,
   },
   chipTextSelected: {
-    color: Colors.white,
-    fontWeight: '600' as const,
+    color: colors.white,
+    fontWeight: '600',
   },
 });
