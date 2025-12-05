@@ -1273,13 +1273,12 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.4)',
     justifyContent: 'center',
-    padding: 20,
+    alignItems: 'center',
   },
   modalAvoidingView: {
-    flex: 1,
     width: '100%',
-    alignItems: 'center',
-    justifyContent: 'center',
+    maxHeight: '90%',
+    paddingHorizontal: 20,
   },
   modalContent: {
     backgroundColor: Colors.white,
@@ -1288,6 +1287,7 @@ const styles = StyleSheet.create({
     gap: 16,
     width: '100%',
     maxWidth: 640,
+    maxHeight: '100%',
   },
   modalContentCompact: {
     maxWidth: '100%',
@@ -1310,10 +1310,11 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.accent,
     borderRadius: 12,
     padding: 10,
-    maxHeight: 260,
+    minHeight: 150,
+    maxHeight: 280,
   },
   pickerScrollable: {
-    maxHeight: 240,
+    flex: 1,
   },
   pickerColumnFullWidth: {
     width: '100%',
