@@ -10,6 +10,8 @@ import {
   TouchableWithoutFeedback,
   Modal,
   TextInput,
+  KeyboardAvoidingView,
+  Platform,
   useWindowDimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -75,6 +77,7 @@ export default function ProfileScreen() {
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
   const { width } = useWindowDimensions();
   const isSmallScreen = width < 380;
+  const isCompactModal = width < 520;
 
   const [birthdayInput, setBirthdayInput] = useState('');
   const [heightInput, setHeightInput] = useState('');
@@ -258,6 +261,16 @@ export default function ProfileScreen() {
   const birthdayOptionSelectedStyle = useMemo(
     () => [styles.pickerOptionTextSelected, isSmallScreen && styles.pickerOptionTextSmall].filter(Boolean),
     [isSmallScreen],
+  );
+
+  const pickerColumnsStyle = useMemo(
+    () => [styles.pickerColumns, isCompactModal && styles.pickerColumnsStacked],
+    [isCompactModal],
+  );
+
+  const pickerColumnStyle = useMemo(
+    () => [styles.pickerColumn, isCompactModal && styles.pickerColumnFullWidth],
+    [isCompactModal],
   );
 
   const heightDisplay = useMemo(() => {
@@ -506,13 +519,17 @@ export default function ProfileScreen() {
         onRequestClose={() => setIsBirthdayPickerVisible(false)}
       >
         <View style={styles.modalBackdrop}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Select your birthday</Text>
-            <View style={styles.pickerColumns}>
-              <View style={styles.pickerColumn}>
-                <Text style={styles.pickerLabel}>Day</Text>
-                <ScrollView contentContainerStyle={styles.pickerList} showsVerticalScrollIndicator={false}>
-                  {Array.from({ length: daysInMonth }, (_, index) => index + 1).map(day => (
+          <KeyboardAvoidingView
+            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+            style={styles.modalAvoidingView}
+          >
+            <View style={[styles.modalContent, isCompactModal && styles.modalContentCompact]}>
+              <Text style={styles.modalTitle}>Select your birthday</Text>
+              <View style={pickerColumnsStyle}>
+                <View style={pickerColumnStyle}>
+                  <Text style={styles.pickerLabel}>Day</Text>
+                  <ScrollView contentContainerStyle={styles.pickerList} showsVerticalScrollIndicator={false}>
+                    {Array.from({ length: daysInMonth }, (_, index) => index + 1).map(day => (
                     <Pressable
                       key={day}
                       onPress={() => setTempDay(day)}
@@ -528,10 +545,10 @@ export default function ProfileScreen() {
                 </ScrollView>
               </View>
 
-              <View style={styles.pickerColumn}>
-                <Text style={styles.pickerLabel}>Month</Text>
-                <ScrollView contentContainerStyle={styles.pickerList} showsVerticalScrollIndicator={false}>
-                  {[
+                <View style={pickerColumnStyle}>
+                  <Text style={styles.pickerLabel}>Month</Text>
+                  <ScrollView contentContainerStyle={styles.pickerList} showsVerticalScrollIndicator={false}>
+                    {[
                     'January',
                     'February',
                     'March',
@@ -569,10 +586,10 @@ export default function ProfileScreen() {
                 </ScrollView>
               </View>
 
-              <View style={styles.pickerColumn}>
-                <Text style={styles.pickerLabel}>Year</Text>
-                <ScrollView contentContainerStyle={styles.pickerList} showsVerticalScrollIndicator={false}>
-                  {Array.from({ length: 100 }, (_, index) => new Date().getFullYear() - index).map(year => (
+                <View style={pickerColumnStyle}>
+                  <Text style={styles.pickerLabel}>Year</Text>
+                  <ScrollView contentContainerStyle={styles.pickerList} showsVerticalScrollIndicator={false}>
+                    {Array.from({ length: 100 }, (_, index) => new Date().getFullYear() - index).map(year => (
                     <Pressable
                       key={year}
                       onPress={() => setTempYear(year)}
@@ -587,20 +604,21 @@ export default function ProfileScreen() {
                   ))}
                 </ScrollView>
               </View>
-            </View>
+              </View>
 
-            <View style={styles.modalActions}>
-              <Pressable
-                style={[styles.modalButton, styles.modalButtonSecondary]}
-                onPress={() => setIsBirthdayPickerVisible(false)}
-              >
-                <Text style={styles.modalButtonTextSecondary}>Cancel</Text>
-              </Pressable>
-              <Pressable style={[styles.modalButton, styles.modalButtonPrimary]} onPress={saveBirthday}>
-                <Text style={styles.modalButtonTextPrimary}>Save</Text>
-              </Pressable>
+              <View style={styles.modalActions}>
+                <Pressable
+                  style={[styles.modalButton, styles.modalButtonSecondary]}
+                  onPress={() => setIsBirthdayPickerVisible(false)}
+                >
+                  <Text style={styles.modalButtonTextSecondary}>Cancel</Text>
+                </Pressable>
+                <Pressable style={[styles.modalButton, styles.modalButtonPrimary]} onPress={saveBirthday}>
+                  <Text style={styles.modalButtonTextPrimary}>Save</Text>
+                </Pressable>
+              </View>
             </View>
-          </View>
+          </KeyboardAvoidingView>
         </View>
       </Modal>
       <Modal
@@ -610,11 +628,15 @@ export default function ProfileScreen() {
         onRequestClose={() => setIsHeightPickerVisible(false)}
       >
         <View style={styles.modalBackdrop}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Select your height</Text>
-            <View style={styles.unitToggle}>
-              <Pressable
-                onPress={() => handleTempHeightUnitChange('cm')}
+          <KeyboardAvoidingView
+            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+            style={styles.modalAvoidingView}
+          >
+            <View style={[styles.modalContent, isCompactModal && styles.modalContentCompact]}>
+              <Text style={styles.modalTitle}>Select your height</Text>
+              <View style={styles.unitToggle}>
+                <Pressable
+                  onPress={() => handleTempHeightUnitChange('cm')}
                 style={[styles.unitButton, tempHeightUnit === 'cm' && styles.unitButtonActive]}
               >
                 <Text style={[styles.unitText, tempHeightUnit === 'cm' && styles.unitTextActive]}>cm</Text>
@@ -628,8 +650,8 @@ export default function ProfileScreen() {
             </View>
 
             {tempHeightUnit === 'cm' ? (
-              <View style={styles.pickerColumns}>
-                <View style={styles.pickerColumn}>
+              <View style={pickerColumnsStyle}>
+                <View style={pickerColumnStyle}>
                   <Text style={styles.pickerLabel}>Centimeters</Text>
                   <TextInput
                     style={styles.numberInput}
@@ -657,8 +679,8 @@ export default function ProfileScreen() {
                 </View>
               </View>
             ) : (
-              <View style={styles.pickerColumns}>
-                <View style={styles.pickerColumn}>
+              <View style={pickerColumnsStyle}>
+                <View style={pickerColumnStyle}>
                   <Text style={styles.pickerLabel}>Feet</Text>
                   <TextInput
                     style={styles.numberInput}
@@ -684,7 +706,7 @@ export default function ProfileScreen() {
                     ))}
                   </ScrollView>
                 </View>
-                <View style={styles.pickerColumn}>
+                <View style={pickerColumnStyle}>
                   <Text style={styles.pickerLabel}>Inches</Text>
                   <TextInput
                     style={styles.numberInput}
@@ -725,6 +747,7 @@ export default function ProfileScreen() {
               </Pressable>
             </View>
           </View>
+          </KeyboardAvoidingView>
         </View>
       </Modal>
       <Modal
@@ -734,12 +757,16 @@ export default function ProfileScreen() {
         onRequestClose={() => setIsWeightPickerVisible(false)}
       >
         <View style={styles.modalBackdrop}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Select your weight</Text>
-            <View style={styles.unitToggle}>
-              <Pressable
-                onPress={() => handleTempWeightUnitChange('kg')}
-                style={[styles.unitButton, tempWeightUnit === 'kg' && styles.unitButtonActive]}
+          <KeyboardAvoidingView
+            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+            style={styles.modalAvoidingView}
+          >
+            <View style={[styles.modalContent, isCompactModal && styles.modalContentCompact]}>
+              <Text style={styles.modalTitle}>Select your weight</Text>
+              <View style={styles.unitToggle}>
+                <Pressable
+                  onPress={() => handleTempWeightUnitChange('kg')}
+                  style={[styles.unitButton, tempWeightUnit === 'kg' && styles.unitButtonActive]}
               >
                 <Text style={[styles.unitText, tempWeightUnit === 'kg' && styles.unitTextActive]}>kg</Text>
               </Pressable>
@@ -751,8 +778,8 @@ export default function ProfileScreen() {
               </Pressable>
             </View>
 
-            <View style={styles.pickerColumns}>
-              <View style={styles.pickerColumn}>
+            <View style={pickerColumnsStyle}>
+              <View style={pickerColumnStyle}>
                 <Text style={styles.pickerLabel}>Weight</Text>
                 <TextInput
                   style={styles.numberInput}
@@ -795,6 +822,7 @@ export default function ProfileScreen() {
               </Pressable>
             </View>
           </View>
+          </KeyboardAvoidingView>
         </View>
       </Modal>
       <SafeAreaView style={styles.container} edges={['top']}>
@@ -1220,11 +1248,22 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     padding: 20,
   },
+  modalAvoidingView: {
+    flex: 1,
+    width: '100%',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   modalContent: {
     backgroundColor: Colors.white,
     borderRadius: 16,
     padding: 20,
     gap: 16,
+    width: '100%',
+    maxWidth: 640,
+  },
+  modalContentCompact: {
+    maxWidth: '100%',
   },
   modalTitle: {
     fontSize: 16,
@@ -1236,12 +1275,18 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 12,
   },
+  pickerColumnsStacked: {
+    flexDirection: 'column',
+  },
   pickerColumn: {
     flex: 1,
     backgroundColor: Colors.accent,
     borderRadius: 12,
     padding: 10,
     maxHeight: 260,
+  },
+  pickerColumnFullWidth: {
+    width: '100%',
   },
   pickerLabel: {
     fontSize: 11,
