@@ -9,6 +9,8 @@ import {
   Keyboard,
   TouchableWithoutFeedback,
   Modal,
+  TextInput,
+  useWindowDimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -71,6 +73,8 @@ export default function ProfileScreen() {
   const [profile, setProfile] = useState<UserProfile>(DEFAULT_USER_PROFILE);
   const [isLoading, setIsLoading] = useState(true);
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
+  const { width } = useWindowDimensions();
+  const isSmallScreen = width < 380;
 
   const [birthdayInput, setBirthdayInput] = useState('');
   const [heightInput, setHeightInput] = useState('');
@@ -91,6 +95,30 @@ export default function ProfileScreen() {
   const [tempHeightInches, setTempHeightInches] = useState<number>(8);
   const [tempWeightUnit, setTempWeightUnit] = useState<WeightUnit>('kg');
   const [tempWeightValue, setTempWeightValue] = useState<number>(70);
+  const [tempHeightCmText, setTempHeightCmText] = useState('170');
+  const [tempHeightFeetText, setTempHeightFeetText] = useState('5');
+  const [tempHeightInchesText, setTempHeightInchesText] = useState('8');
+  const [tempWeightText, setTempWeightText] = useState('70');
+
+  const syncTempHeightCm = useCallback((value: number) => {
+    setTempHeightCm(value);
+    setTempHeightCmText(value.toString());
+  }, []);
+
+  const syncTempHeightFeet = useCallback((value: number) => {
+    setTempHeightFeet(value);
+    setTempHeightFeetText(value.toString());
+  }, []);
+
+  const syncTempHeightInches = useCallback((value: number) => {
+    setTempHeightInches(value);
+    setTempHeightInchesText(value.toString());
+  }, []);
+
+  const syncTempWeightValue = useCallback((value: number) => {
+    setTempWeightValue(value);
+    setTempWeightText(value.toString());
+  }, []);
 
   useEffect(() => {
     Animated.timing(fadeAnim, {
@@ -222,6 +250,16 @@ export default function ProfileScreen() {
       : 'Enter a valid date (YYYY-MM-DD)'
     : 'Add your birth date to calculate age';
 
+  const birthdayOptionBaseStyle = useMemo(
+    () => [styles.pickerOptionText, isSmallScreen && styles.pickerOptionTextSmall].filter(Boolean),
+    [isSmallScreen],
+  );
+
+  const birthdayOptionSelectedStyle = useMemo(
+    () => [styles.pickerOptionTextSelected, isSmallScreen && styles.pickerOptionTextSmall].filter(Boolean),
+    [isSmallScreen],
+  );
+
   const heightDisplay = useMemo(() => {
     if (heightUnit === 'cm') {
       return heightInput ? `${heightInput} cm` : '';
@@ -271,43 +309,79 @@ export default function ProfileScreen() {
     if (unit === 'cm') {
       const cmValue = heightInput ? parseFloat(heightInput) : profile.heightCm ?? 170;
       const safeCm = !isNaN(cmValue) && cmValue > 0 ? cmValue : 170;
-      setTempHeightCm(safeCm);
+      syncTempHeightCm(safeCm);
       const { feet, inches } = convertCmToFeetInches(safeCm);
-      setTempHeightFeet(feet);
-      setTempHeightInches(inches);
+      syncTempHeightFeet(feet);
+      syncTempHeightInches(inches);
     } else {
       const feet = heightFeetInput ? parseInt(heightFeetInput, 10) : null;
       const inches = heightInchesInput ? parseFloat(heightInchesInput) : null;
 
       if (feet !== null && inches !== null && !isNaN(feet) && !isNaN(inches)) {
-        setTempHeightFeet(feet);
-        setTempHeightInches(inches);
-        setTempHeightCm(convertFeetInchesToCm(feet, inches));
+        syncTempHeightFeet(feet);
+        syncTempHeightInches(inches);
+        syncTempHeightCm(convertFeetInchesToCm(feet, inches));
       } else if (profile.heightCm) {
         const { feet: savedFeet, inches: savedInches } = convertCmToFeetInches(profile.heightCm);
-        setTempHeightFeet(savedFeet);
-        setTempHeightInches(savedInches);
-        setTempHeightCm(profile.heightCm);
+        syncTempHeightFeet(savedFeet);
+        syncTempHeightInches(savedInches);
+        syncTempHeightCm(profile.heightCm);
       }
     }
 
     setIsHeightPickerVisible(true);
-  }, [heightFeetInput, heightInchesInput, heightInput, heightUnit, profile.heightCm]);
+  }, [heightFeetInput, heightInchesInput, heightInput, heightUnit, profile.heightCm, syncTempHeightCm, syncTempHeightFeet, syncTempHeightInches]);
 
   const handleTempHeightUnitChange = useCallback((unit: HeightUnit) => {
     if (unit === tempHeightUnit) return;
 
     if (unit === 'cm') {
       const cmValue = convertFeetInchesToCm(tempHeightFeet, tempHeightInches);
-      setTempHeightCm(cmValue);
+      syncTempHeightCm(cmValue);
     } else {
       const { feet, inches } = convertCmToFeetInches(tempHeightCm);
-      setTempHeightFeet(feet);
-      setTempHeightInches(inches);
+      syncTempHeightFeet(feet);
+      syncTempHeightInches(inches);
     }
 
     setTempHeightUnit(unit);
-  }, [tempHeightCm, tempHeightFeet, tempHeightInches, tempHeightUnit]);
+  }, [syncTempHeightCm, syncTempHeightFeet, syncTempHeightInches, tempHeightCm, tempHeightFeet, tempHeightInches, tempHeightUnit]);
+
+  const handleHeightCmInputChange = useCallback((value: string) => {
+    const sanitized = value.replace(/[^0-9.]/g, '');
+    setTempHeightCmText(sanitized);
+    const parsed = parseFloat(sanitized);
+    if (!isNaN(parsed)) {
+      syncTempHeightCm(Math.max(0, Math.min(260, parsed)));
+    }
+  }, [syncTempHeightCm]);
+
+  const handleHeightFeetInputChange = useCallback((value: string) => {
+    const sanitized = value.replace(/[^0-9]/g, '');
+    setTempHeightFeetText(sanitized);
+    const parsed = parseInt(sanitized, 10);
+    if (!isNaN(parsed)) {
+      syncTempHeightFeet(Math.max(0, Math.min(8, parsed)));
+    }
+  }, [syncTempHeightFeet]);
+
+  const handleHeightInchesInputChange = useCallback((value: string) => {
+    const sanitized = value.replace(/[^0-9.]/g, '');
+    setTempHeightInchesText(sanitized);
+    const parsed = parseFloat(sanitized);
+    if (!isNaN(parsed)) {
+      syncTempHeightInches(Math.max(0, Math.min(11, parsed)));
+    }
+  }, [syncTempHeightInches]);
+
+  const handleWeightInputChange = useCallback((value: string) => {
+    const sanitized = value.replace(/[^0-9.]/g, '');
+    setTempWeightText(sanitized);
+    const parsed = parseFloat(sanitized);
+    if (!isNaN(parsed)) {
+      syncTempWeightValue(Math.max(0, parsed));
+    }
+  }, [syncTempWeightValue]);
 
   const saveHeightSelection = useCallback(() => {
     if (tempHeightUnit === 'cm') {
@@ -336,21 +410,21 @@ export default function ProfileScreen() {
     const defaultWeight = unit === 'kg' ? 70 : 155;
     const safeWeight = parsedWeight && !isNaN(parsedWeight) ? parsedWeight : defaultWeight;
 
-    setTempWeightValue(safeWeight);
+    syncTempWeightValue(safeWeight);
     setIsWeightPickerVisible(true);
-  }, [profile.weight, weightInput, weightUnit]);
+  }, [profile.weight, syncTempWeightValue, weightInput, weightUnit]);
 
   const handleTempWeightUnitChange = useCallback((unit: WeightUnit) => {
     if (unit === tempWeightUnit) return;
 
     if (unit === 'kg') {
-      setTempWeightValue(convertLbToKg(tempWeightValue));
+      syncTempWeightValue(convertLbToKg(tempWeightValue));
     } else {
-      setTempWeightValue(convertKgToLb(tempWeightValue));
+      syncTempWeightValue(convertKgToLb(tempWeightValue));
     }
 
     setTempWeightUnit(unit);
-  }, [tempWeightUnit, tempWeightValue]);
+  }, [syncTempWeightValue, tempWeightUnit, tempWeightValue]);
 
   const saveWeightSelection = useCallback(() => {
     const roundedWeight = Math.round(tempWeightValue * 10) / 10;
@@ -471,7 +545,7 @@ export default function ProfileScreen() {
                       style={[styles.pickerOption, tempDay === day && styles.pickerOptionSelected]}
                     >
                       <Text
-                        style={[styles.pickerOptionText, tempDay === day && styles.pickerOptionTextSelected]}
+                        style={[...birthdayOptionBaseStyle, tempDay === day && birthdayOptionSelectedStyle]}
                       >
                         {day}
                       </Text>
@@ -509,8 +583,8 @@ export default function ProfileScreen() {
                       >
                         <Text
                           style={[
-                            styles.pickerOptionText,
-                            tempMonth === monthNumber && styles.pickerOptionTextSelected,
+                            ...birthdayOptionBaseStyle,
+                            tempMonth === monthNumber && birthdayOptionSelectedStyle,
                           ]}
                         >
                           {monthName}
@@ -531,7 +605,7 @@ export default function ProfileScreen() {
                       style={[styles.pickerOption, tempYear === year && styles.pickerOptionSelected]}
                     >
                       <Text
-                        style={[styles.pickerOptionText, tempYear === year && styles.pickerOptionTextSelected]}
+                        style={[...birthdayOptionBaseStyle, tempYear === year && birthdayOptionSelectedStyle]}
                       >
                         {year}
                       </Text>
@@ -583,11 +657,19 @@ export default function ProfileScreen() {
               <View style={styles.pickerColumns}>
                 <View style={styles.pickerColumn}>
                   <Text style={styles.pickerLabel}>Centimeters</Text>
+                  <TextInput
+                    style={styles.numberInput}
+                    keyboardType="numeric"
+                    inputMode="numeric"
+                    value={tempHeightCmText}
+                    onChangeText={handleHeightCmInputChange}
+                    placeholder="Enter height"
+                  />
                   <ScrollView contentContainerStyle={styles.pickerList} showsVerticalScrollIndicator={false}>
                     {Array.from({ length: 101 }, (_, index) => 120 + index).map(cm => (
                       <Pressable
                         key={cm}
-                        onPress={() => setTempHeightCm(cm)}
+                        onPress={() => syncTempHeightCm(cm)}
                         style={[styles.pickerOption, tempHeightCm === cm && styles.pickerOptionSelected]}
                       >
                         <Text
@@ -604,11 +686,19 @@ export default function ProfileScreen() {
               <View style={styles.pickerColumns}>
                 <View style={styles.pickerColumn}>
                   <Text style={styles.pickerLabel}>Feet</Text>
+                  <TextInput
+                    style={styles.numberInput}
+                    keyboardType="numeric"
+                    inputMode="numeric"
+                    value={tempHeightFeetText}
+                    onChangeText={handleHeightFeetInputChange}
+                    placeholder="Enter feet"
+                  />
                   <ScrollView contentContainerStyle={styles.pickerList} showsVerticalScrollIndicator={false}>
                     {Array.from({ length: 5 }, (_, index) => 4 + index).map(feet => (
                       <Pressable
                         key={feet}
-                        onPress={() => setTempHeightFeet(feet)}
+                        onPress={() => syncTempHeightFeet(feet)}
                         style={[styles.pickerOption, tempHeightFeet === feet && styles.pickerOptionSelected]}
                       >
                         <Text
@@ -622,11 +712,19 @@ export default function ProfileScreen() {
                 </View>
                 <View style={styles.pickerColumn}>
                   <Text style={styles.pickerLabel}>Inches</Text>
+                  <TextInput
+                    style={styles.numberInput}
+                    keyboardType="numeric"
+                    inputMode="numeric"
+                    value={tempHeightInchesText}
+                    onChangeText={handleHeightInchesInputChange}
+                    placeholder="Enter inches"
+                  />
                   <ScrollView contentContainerStyle={styles.pickerList} showsVerticalScrollIndicator={false}>
                     {Array.from({ length: 12 }, (_, index) => index).map(inches => (
                       <Pressable
                         key={inches}
-                        onPress={() => setTempHeightInches(inches)}
+                        onPress={() => syncTempHeightInches(inches)}
                         style={[styles.pickerOption, tempHeightInches === inches && styles.pickerOptionSelected]}
                       >
                         <Text
@@ -682,6 +780,14 @@ export default function ProfileScreen() {
             <View style={styles.pickerColumns}>
               <View style={styles.pickerColumn}>
                 <Text style={styles.pickerLabel}>Weight</Text>
+                <TextInput
+                  style={styles.numberInput}
+                  keyboardType="numeric"
+                  inputMode="numeric"
+                  value={tempWeightText}
+                  onChangeText={handleWeightInputChange}
+                  placeholder={`Enter weight in ${tempWeightUnit}`}
+                />
                 <ScrollView contentContainerStyle={styles.pickerList} showsVerticalScrollIndicator={false}>
                   {(tempWeightUnit === 'kg'
                     ? Array.from({ length: 171 }, (_, index) => 30 + index)
@@ -689,7 +795,7 @@ export default function ProfileScreen() {
                   ).map(weightValue => (
                     <Pressable
                       key={weightValue}
-                      onPress={() => setTempWeightValue(weightValue)}
+                      onPress={() => syncTempWeightValue(weightValue)}
                       style={[styles.pickerOption, tempWeightValue === weightValue && styles.pickerOptionSelected]}
                     >
                       <Text
@@ -1171,6 +1277,17 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
+  numberInput: {
+    backgroundColor: Colors.white,
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    fontSize: 14,
+    color: Colors.text,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    marginBottom: 8,
+  },
   pickerList: {
     gap: 6,
     paddingBottom: 6,
@@ -1186,6 +1303,9 @@ const styles = StyleSheet.create({
   pickerOptionText: {
     fontSize: 14,
     color: Colors.textSecondary,
+  },
+  pickerOptionTextSmall: {
+    fontSize: 12,
   },
   pickerOptionTextSelected: {
     color: Colors.text,
