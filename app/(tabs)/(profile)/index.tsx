@@ -433,32 +433,6 @@ export default function ProfileScreen() {
     setIsWeightPickerVisible(false);
   }, [tempWeightUnit, tempWeightValue]);
 
-  const daysInMonth = useMemo(() => {
-    return new Date(tempYear, tempMonth, 0).getDate();
-  }, [tempMonth, tempYear]);
-
-  useEffect(() => {
-    if (tempDay > daysInMonth) {
-      setTempDay(daysInMonth);
-    }
-  }, [daysInMonth, tempDay]);
-
-  const openBirthdayPicker = useCallback(() => {
-    const existingDate = birthdayInput ? new Date(birthdayInput) : null;
-    const validDate = existingDate && !isNaN(existingDate.getTime()) ? existingDate : new Date();
-
-    setTempDay(validDate.getDate());
-    setTempMonth(validDate.getMonth() + 1);
-    setTempYear(validDate.getFullYear());
-    setIsBirthdayPickerVisible(true);
-  }, [birthdayInput]);
-
-  const saveBirthday = useCallback(() => {
-    const formatted = `${tempYear}-${String(tempMonth).padStart(2, '0')}-${String(tempDay).padStart(2, '0')}`;
-    setBirthdayInput(formatted);
-    setIsBirthdayPickerVisible(false);
-  }, [tempDay, tempMonth, tempYear]);
-
   const EquipmentItem = ({ equipment }: { equipment: typeof EQUIPMENT[0] }) => {
     const isSelected = profile.selectedEquipment.includes(equipment.id);
     const scaleAnim = useRef(new Animated.Value(1)).current;
