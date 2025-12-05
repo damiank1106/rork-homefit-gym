@@ -6,10 +6,8 @@ import {
   ScrollView,
   Pressable,
   Animated,
-  TextInput,
   Keyboard,
   TouchableWithoutFeedback,
-  KeyboardTypeOptions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -23,7 +21,7 @@ import {
   Save,
 } from 'lucide-react-native';
 import { useTheme } from '@/src/context/ThemeContext';
-import { UserProfile, DEFAULT_USER_PROFILE, WeightUnit, HeightUnit } from '@/src/types/profile';
+import { UserProfile, DEFAULT_USER_PROFILE } from '@/src/types/profile';
 import { loadUserProfile, saveUserProfile } from '@/src/storage/profileStorage';
 import { EQUIPMENT } from '@/src/data/equipment';
 import { EquipmentId } from '@/src/types/training';
@@ -33,12 +31,17 @@ import MeasurementModal from '@/src/components/MeasurementModal';
 const convertCmToFeetInches = (cm: number) => {
   const totalInches = cm / 2.54;
   const feet = Math.floor(totalInches / 12);
-  const inches = parseFloat((totalInches % 12).toFixed(1));
-  return { feet, inches };
+  const inches = Math.round(totalInches % 12);
+  return `${feet}'${inches}`;
 };
 
-const convertFeetInchesToCm = (feet: number, inches: number) => {
-  return Math.round((feet * 12 + inches) * 2.54 * 10) / 10;
+const convertFeetInchesToCm = (value: string): number | null => {
+  const parts = value.split("'");
+  if (parts.length !== 2) return null;
+  const feet = parseFloat(parts[0]);
+  const inches = parseFloat(parts[1]);
+  if (isNaN(feet) || isNaN(inches)) return null;
+  return (feet * 12 + inches) * 2.54;
 };
 
 const calculateAge = (birthday: string): number | null => {
@@ -105,13 +108,11 @@ export default function ProfileScreen() {
       
       // Height
       if (stored.heightCm) {
-         if (stored.heightUnit === 'imperial') {
-            const { feet, inches } = convertCmToFeetInches(stored.heightCm);
-            // We store it as cm, but display might need formatted string if we were just using text input
-            // But for modal, we can pass raw value or convert.
-            // Simplified: Just use stored cm value for logic, display depends on unit
+         if (stored.heightUnit === 'ft') {
+            setHeightInput(convertCmToFeetInches(stored.heightCm));
+         } else {
+            setHeightInput(stored.heightCm.toString());
          }
-         setHeightInput(stored.heightCm.toString());
       }
       
       setWeightInput(stored.weight?.toString() ?? '');
@@ -126,14 +127,18 @@ export default function ProfileScreen() {
     const birthDateInput = birthdayInput.trim();
     const age = calculateAge(birthDateInput);
 
-    let heightCm: number | null = heightInput ? parseFloat(heightInput) : null;
+    let heightCm: number | null = null;
+    
+    if (heightInput) {
+      if (profile.heightUnit === 'ft') {
+        heightCm = convertFeetInchesToCm(heightInput);
+      } else {
+        heightCm = parseFloat(heightInput);
+      }
+    }
+    
     const weight = weightInput ? parseFloat(weightInput) : null;
 
-    // If unit is imperial, heightInput logic might need adjustment if it was stored as feet/inches combined?
-    // Actually, our modal returns standardized value or we handle it.
-    // Let's assume heightInput is always CM for simplicity in state, or we convert on save.
-    // Wait, MeasurementModal returns value and unit.
-    
     // Validate
     const isInvalid =
       (birthDateInput && age === null) ||
@@ -261,6 +266,19 @@ export default function ProfileScreen() {
     );
   }
 
+  // Helper to display height nicely
+  const displayHeight = () => {
+    if (!heightInput) return '';
+    if (profile.heightUnit === 'ft') {
+      const parts = heightInput.split("'");
+      if (parts.length === 2) {
+        return `${parts[0]} ft ${parts[1]} in`;
+      }
+      return heightInput; 
+    }
+    return `${heightInput} cm`;
+  };
+
   return (
     <LinearGradient
       colors={[colors.gradientStart, colors.gradientMiddle, colors.background]}
@@ -310,7 +328,7 @@ export default function ProfileScreen() {
                     <InputRow
                       icon={Ruler}
                       label="Height"
-                      value={heightInput ? `${heightInput} cm` : ''} // Display logic could be better
+                      value={displayHeight()} 
                       onPress={() => setHeightModalVisible(true)}
                     />
                     
@@ -376,32 +394,17 @@ export default function ProfileScreen() {
           visible={heightModalVisible}
           onClose={() => setHeightModalVisible(false)}
           onSave={(val, unit) => {
-             // For simplicity, we convert to CM if unit is imperial or handle it.
-             // But our MeasurementModal uses generic units.
-             // Let's implement conversion logic inside here if needed or just store as is.
-             // Current Profile expects heightCm.
-             if (unit === 'imperial') {
-                 // Wait, modal returns single value. Imperial height is feet/inches usually (2 inputs).
-                 // My generic modal has 1 input.
-                 // So I should stick to CM for height in this modal for now to be safe, 
-                 // or update modal to handle 2 inputs (complex).
-                 // User asked for "Modal for Height".
-                 // I'll assume CM/Ft toggle inside modal updates the single value (as float feet? no that's weird).
-                 // Let's stick to CM for simplicity or simple float.
-                 // Actually, let's just save the value.
-                 setHeightInput(val);
-                 setProfile(p => ({ ...p, heightUnit: unit as any })); // Update unit in profile
-             } else {
-                 setHeightInput(val);
-                 setProfile(p => ({ ...p, heightUnit: 'cm' }));
-             }
+             setHeightInput(val);
+             // Type casting unit to any because UserProfile might not strictly type 'ft' yet if I defined it strictly in types. 
+             // Assuming UserProfile.heightUnit is string or includes 'ft'.
+             setProfile(p => ({ ...p, heightUnit: unit as any })); 
           }}
           initialValue={heightInput}
           initialUnit={profile.heightUnit || 'cm'}
           title="Height"
           units={[
             { label: 'cm', value: 'cm' },
-            // { label: 'ft/in', value: 'imperial' } // Disable imperial for single input modal to avoid confusion
+            { label: 'ft', value: 'ft' }
           ]}
         />
 

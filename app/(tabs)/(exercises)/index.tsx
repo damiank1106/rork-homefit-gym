@@ -11,7 +11,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { Search, Filter } from 'lucide-react-native';
-import Colors from '@/constants/colors';
+import { useTheme } from '@/src/context/ThemeContext';
 import { EXERCISES } from '@/src/data/exercises';
 import { EQUIPMENT } from '@/src/data/equipment';
 import { BodyArea, EquipmentId } from '@/src/types/training';
@@ -36,6 +36,9 @@ const BODY_AREA_FILTERS: { key: BodyAreaFilter; label: string }[] = [
 export default function ExercisesScreen() {
   const router = useRouter();
   const { width } = useWindowDimensions();
+  const { colors } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
+
   const [selectedBodyArea, setSelectedBodyArea] = useState<BodyAreaFilter>('all');
   const [selectedEquipment, setSelectedEquipment] = useState<EquipmentId[]>([]);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
@@ -96,7 +99,7 @@ export default function ExercisesScreen() {
 
   return (
     <LinearGradient
-      colors={[Colors.gradientStart, Colors.gradientMiddle, Colors.background]}
+      colors={[colors.gradientStart, colors.gradientMiddle, colors.background]}
       locations={[0, 0.2, 0.5]}
       style={styles.gradient}
     >
@@ -112,14 +115,14 @@ export default function ExercisesScreen() {
           {hasUserEquipment && (
             <View style={styles.myEquipmentToggle}>
               <View style={styles.toggleContent}>
-                <Filter size={18} color={Colors.primary} strokeWidth={2} />
+                <Filter size={18} color={colors.primary} strokeWidth={2} />
                 <Text style={styles.toggleLabel}>Show only my equipment</Text>
               </View>
               <Switch
                 value={useMyEquipmentOnly}
                 onValueChange={setUseMyEquipmentOnly}
-                trackColor={{ false: Colors.border, true: Colors.primaryDark }}
-                thumbColor={useMyEquipmentOnly ? Colors.primary : Colors.white}
+                trackColor={{ false: colors.border, true: colors.primaryDark }}
+                thumbColor={useMyEquipmentOnly ? colors.primary : colors.white}
               />
             </View>
           )}
@@ -168,7 +171,7 @@ export default function ExercisesScreen() {
         >
           {filteredExercises.length === 0 ? (
             <View style={styles.emptyState}>
-              <Search size={48} color={Colors.textLight} strokeWidth={1.5} />
+              <Search size={48} color={colors.textLight} strokeWidth={1.5} />
               <Text style={styles.emptyTitle}>No exercises found</Text>
               <Text style={styles.emptySubtitle}>
                 {useMyEquipmentOnly 
@@ -194,7 +197,7 @@ export default function ExercisesScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: any) => StyleSheet.create({
   gradient: {
     flex: 1,
   },
@@ -209,13 +212,13 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 32,
     fontWeight: '700' as const,
-    color: Colors.text,
+    color: colors.text,
     letterSpacing: -0.5,
     marginBottom: 4,
   },
   subtitle: {
     fontSize: 15,
-    color: Colors.textSecondary,
+    color: colors.textSecondary,
   },
   filtersSection: {
     paddingTop: 12,
@@ -225,13 +228,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: Colors.white,
+    backgroundColor: colors.card,
     marginHorizontal: 20,
     marginBottom: 16,
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderRadius: 12,
-    shadowColor: Colors.shadowColor,
+    shadowColor: colors.shadowColor,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.08,
     shadowRadius: 6,
@@ -245,12 +248,12 @@ const styles = StyleSheet.create({
   toggleLabel: {
     fontSize: 15,
     fontWeight: '600' as const,
-    color: Colors.text,
+    color: colors.text,
   },
   filterLabel: {
     fontSize: 14,
     fontWeight: '600' as const,
-    color: Colors.textSecondary,
+    color: colors.textSecondary,
     paddingHorizontal: 20,
     marginBottom: 12,
     textTransform: 'uppercase',
@@ -288,13 +291,13 @@ const styles = StyleSheet.create({
   emptyTitle: {
     fontSize: 18,
     fontWeight: '600' as const,
-    color: Colors.text,
+    color: colors.text,
     marginTop: 16,
     marginBottom: 8,
   },
   emptySubtitle: {
     fontSize: 15,
-    color: Colors.textSecondary,
+    color: colors.textSecondary,
     textAlign: 'center',
     paddingHorizontal: 40,
   },

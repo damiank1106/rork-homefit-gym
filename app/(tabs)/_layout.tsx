@@ -1,12 +1,19 @@
 import { Tabs } from 'expo-router';
-import { Home, Dumbbell, User, BarChart3, Settings } from 'lucide-react-native';
+import { Home, Dumbbell, User, BarChart3, Settings2 } from 'lucide-react-native';
 import React, { useMemo } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { StyleSheet, View, useWindowDimensions, Platform } from 'react-native';
 import { useTheme } from '@/src/context/ThemeContext';
 
 export default function TabLayout() {
   const { colors } = useTheme();
+  const { width } = useWindowDimensions();
   const styles = useMemo(() => createStyles(colors), [colors]);
+
+  const isSmallScreen = width < 768;
+  const isWeb = Platform.OS === 'web';
+  
+  // Show label on Web or Big Screen. Hide on Small Screen (Mobile App).
+  const showSettingsLabel = isWeb || !isSmallScreen;
 
   return (
     <Tabs
@@ -67,9 +74,10 @@ export default function TabLayout() {
         name="settings"
         options={{
           title: 'Settings',
+          tabBarLabel: showSettingsLabel ? 'Settings' : () => null,
           tabBarIcon: ({ color, size }) => (
             <View style={styles.iconWrapper}>
-              <Settings size={size} color={color} strokeWidth={2.2} />
+              <Settings2 size={size} color={color} strokeWidth={2.2} />
             </View>
           ),
         }}

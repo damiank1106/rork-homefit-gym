@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useState, useCallback } from 'react';
+import React, { useRef, useEffect, useState, useCallback, useMemo } from 'react';
 import {
   View,
   Text,
@@ -24,7 +24,7 @@ import {
   Target,
   Award,
 } from 'lucide-react-native';
-import Colors from '@/constants/colors';
+import { useTheme } from '@/src/context/ThemeContext';
 import { EXERCISES } from '@/src/data/exercises';
 import { ExerciseLog, DailySummary, PeriodSummary, StreakData } from '@/src/types/history';
 import { getExerciseLogs } from '@/src/storage/historyStorage';
@@ -67,6 +67,9 @@ type MarkedDates = {
 export default function HomeScreen() {
   const router = useRouter();
   const { width } = useWindowDimensions();
+  const { colors } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
+
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(30)).current;
 
@@ -114,23 +117,23 @@ export default function HomeScreen() {
     const marks: MarkedDates = {};
     Object.entries(grouped).forEach(([date, summary]) => {
       const intensity = Math.min(summary.totalCalories / 100, 1);
-      const baseColor = Colors.primary;
+      const baseColor = colors.primary;
       marks[date] = {
         marked: true,
-        dotColor: intensity > 0.5 ? Colors.primaryDark : baseColor,
+        dotColor: intensity > 0.5 ? colors.primaryDark : baseColor,
       };
     });
 
     marks[selectedDate] = {
       ...marks[selectedDate],
       selected: true,
-      selectedColor: Colors.primary,
-      selectedTextColor: Colors.white,
+      selectedColor: colors.primary,
+      selectedTextColor: colors.white,
     };
 
     setMarkedDates(marks);
     console.log(`Loaded ${allLogs.length} logs, ${Object.keys(grouped).length} workout days`);
-  }, [selectedDate]);
+  }, [selectedDate, colors]);
 
   useFocusEffect(
     useCallback(() => {
@@ -161,14 +164,14 @@ export default function HomeScreen() {
       const intensity = Math.min(summary.totalCalories / 100, 1);
       marks[date] = {
         marked: true,
-        dotColor: intensity > 0.5 ? Colors.primaryDark : Colors.primary,
+        dotColor: intensity > 0.5 ? colors.primaryDark : colors.primary,
       };
     });
     marks[day.dateString] = {
       ...marks[day.dateString],
       selected: true,
-      selectedColor: Colors.primary,
-      selectedTextColor: Colors.white,
+      selectedColor: colors.primary,
+      selectedTextColor: colors.white,
     };
     setMarkedDates(marks);
   };
@@ -234,12 +237,12 @@ export default function HomeScreen() {
         ]}
       >
         <LinearGradient
-          colors={unlocked ? [color, color + 'DD'] : ['#E8E8E8', '#DDDDDD']}
+          colors={unlocked ? [color, color + 'DD'] : [colors.border, colors.border]}
           style={styles.achievementGradient}
         >
           <Icon
             size={24}
-            color={unlocked ? Colors.white : '#AAAAAA'}
+            color={unlocked ? colors.white : colors.textLight}
             strokeWidth={2}
           />
         </LinearGradient>
@@ -271,7 +274,7 @@ export default function HomeScreen() {
 
   return (
     <LinearGradient
-      colors={[Colors.gradientStart, Colors.gradientMiddle, Colors.background]}
+      colors={[colors.gradientStart, colors.gradientMiddle, colors.background]}
       locations={[0, 0.3, 0.6]}
       style={styles.gradient}
     >
@@ -299,7 +302,7 @@ export default function HomeScreen() {
               </Text>
             </View>
             <Pressable style={styles.streakBadge} onPress={navigateToProfile}>
-              <Flame size={18} color={Colors.warning} strokeWidth={2.5} />
+              <Flame size={18} color={colors.warning} strokeWidth={2.5} />
               <Text style={styles.streakText}>
                 {streakData.currentStreak > 0 ? `${streakData.currentStreak} day${streakData.currentStreak > 1 ? 's' : ''}` : 'Start streak'}
               </Text>
@@ -316,7 +319,7 @@ export default function HomeScreen() {
             ]}
           >
             <LinearGradient
-              colors={[Colors.primary, Colors.primaryDark]}
+              colors={[colors.primary, colors.primaryDark]}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
               style={styles.heroGradient}
@@ -337,7 +340,7 @@ export default function HomeScreen() {
                   style={styles.heroButton}
                   onPress={navigateToExercises}
                 >
-                  <Play size={18} color={Colors.primary} fill={Colors.primary} />
+                  <Play size={18} color={colors.primary} fill={colors.primary} />
                   <Text style={styles.heroButtonText}>Start Workout</Text>
                 </Pressable>
               </View>
@@ -359,21 +362,21 @@ export default function HomeScreen() {
                 label="Today"
                 value={todaySummary.workoutCount}
                 unit="workouts"
-                color={Colors.success}
+                color={colors.success}
               />
               <StatCard
                 icon={Clock}
                 label="This week"
                 value={weekMinutes}
                 unit="minutes"
-                color={Colors.secondary}
+                color={colors.secondary}
               />
               <StatCard
                 icon={Flame}
                 label="Best streak"
                 value={streakData.bestStreak}
                 unit="days"
-                color={Colors.warning}
+                color={colors.warning}
               />
             </View>
           </View>
@@ -381,7 +384,7 @@ export default function HomeScreen() {
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
               <View style={styles.sectionTitleRow}>
-                <CalendarDays size={20} color={Colors.text} strokeWidth={2} />
+                <CalendarDays size={20} color={colors.text} strokeWidth={2} />
                 <Text style={styles.sectionTitle}>Workout Calendar</Text>
               </View>
             </View>
@@ -393,16 +396,16 @@ export default function HomeScreen() {
                 theme={{
                   backgroundColor: 'transparent',
                   calendarBackground: 'transparent',
-                  textSectionTitleColor: Colors.textSecondary,
-                  selectedDayBackgroundColor: Colors.primary,
-                  selectedDayTextColor: Colors.white,
-                  todayTextColor: Colors.primary,
-                  dayTextColor: Colors.text,
-                  textDisabledColor: Colors.textLight,
-                  dotColor: Colors.primary,
-                  selectedDotColor: Colors.white,
-                  arrowColor: Colors.primary,
-                  monthTextColor: Colors.text,
+                  textSectionTitleColor: colors.textSecondary,
+                  selectedDayBackgroundColor: colors.primary,
+                  selectedDayTextColor: colors.white,
+                  todayTextColor: colors.primary,
+                  dayTextColor: colors.text,
+                  textDisabledColor: colors.textLight,
+                  dotColor: colors.primary,
+                  selectedDotColor: colors.white,
+                  arrowColor: colors.primary,
+                  monthTextColor: colors.text,
                   textDayFontWeight: '500' as const,
                   textMonthFontWeight: '700' as const,
                   textDayHeaderFontWeight: '600' as const,
@@ -427,13 +430,13 @@ export default function HomeScreen() {
                     </Text>
                     <View style={styles.dailySummaryStats}>
                       <View style={styles.dailyStat}>
-                        <Clock size={14} color={Colors.textSecondary} />
+                        <Clock size={14} color={colors.textSecondary} />
                         <Text style={styles.dailyStatText}>
                           {formatMinutes(selectedDaySummary.totalDurationSeconds)}m
                         </Text>
                       </View>
                       <View style={styles.dailyStat}>
-                        <Flame size={14} color={Colors.warning} />
+                        <Flame size={14} color={colors.warning} />
                         <Text style={styles.dailyStatText}>
                           {Math.round(selectedDaySummary.totalCalories)} kcal
                         </Text>
@@ -468,7 +471,7 @@ export default function HomeScreen() {
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
               <View style={styles.sectionTitleRow}>
-                <Trophy size={20} color={Colors.text} strokeWidth={2} />
+                <Trophy size={20} color={colors.text} strokeWidth={2} />
                 <Text style={styles.sectionTitle}>Achievements</Text>
               </View>
             </View>
@@ -481,25 +484,25 @@ export default function HomeScreen() {
                 icon={Flame}
                 title="3-Day Streak"
                 unlocked={streakData.bestStreak >= 3}
-                color={Colors.warning}
+                color={colors.warning}
               />
               <AchievementCard
                 icon={Zap}
                 title="10 Min Week"
                 unlocked={weekMinutes >= 10}
-                color={Colors.secondary}
+                color={colors.secondary}
               />
               <AchievementCard
                 icon={Target}
                 title="30 Min Month"
                 unlocked={monthMinutes >= 30}
-                color={Colors.success}
+                color={colors.success}
               />
               <AchievementCard
                 icon={Award}
                 title="100 kcal Burner"
                 unlocked={monthSummary.totalCalories >= 100}
-                color={Colors.primary}
+                color={colors.primary}
               />
               <AchievementCard
                 icon={Trophy}
@@ -518,7 +521,7 @@ export default function HomeScreen() {
                 onPress={navigateToExercises}
               >
                 <Text style={styles.seeAllText}>See All</Text>
-                <ChevronRight size={16} color={Colors.primary} />
+                <ChevronRight size={16} color={colors.primary} />
               </Pressable>
             </View>
             <ScrollView
@@ -568,7 +571,7 @@ export default function HomeScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: any) => StyleSheet.create({
   gradient: {
     flex: 1,
   },
@@ -594,24 +597,24 @@ const styles = StyleSheet.create({
   },
   greeting: {
     fontSize: 14,
-    color: Colors.textSecondary,
+    color: colors.textSecondary,
     marginBottom: 4,
   },
   title: {
     fontSize: 24,
     fontWeight: '700' as const,
-    color: Colors.text,
+    color: colors.text,
     letterSpacing: -0.5,
   },
   streakBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: Colors.white,
+    backgroundColor: colors.card,
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 20,
     gap: 6,
-    shadowColor: Colors.shadowColor,
+    shadowColor: colors.shadowColor,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 8,
@@ -620,13 +623,13 @@ const styles = StyleSheet.create({
   streakText: {
     fontSize: 12,
     fontWeight: '600' as const,
-    color: Colors.text,
+    color: colors.text,
   },
   heroCard: {
     borderRadius: 24,
     overflow: 'hidden',
     marginBottom: 28,
-    shadowColor: Colors.primary,
+    shadowColor: colors.primary,
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.3,
     shadowRadius: 20,
@@ -651,7 +654,7 @@ const styles = StyleSheet.create({
   heroTitle: {
     fontSize: 22,
     fontWeight: '700' as const,
-    color: Colors.white,
+    color: colors.white,
     marginBottom: 6,
   },
   heroSubtitle: {
@@ -662,7 +665,7 @@ const styles = StyleSheet.create({
   heroButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: Colors.white,
+    backgroundColor: colors.white,
     paddingHorizontal: 16,
     paddingVertical: 10,
     borderRadius: 30,
@@ -672,7 +675,7 @@ const styles = StyleSheet.create({
   heroButtonText: {
     fontSize: 13,
     fontWeight: '700' as const,
-    color: Colors.primary,
+    color: colors.primary,
   },
   heroImageContainer: {
     width: 100,
@@ -703,7 +706,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 18,
     fontWeight: '700' as const,
-    color: Colors.text,
+    color: colors.text,
     marginBottom: 0,
   },
   seeAllButton: {
@@ -714,7 +717,7 @@ const styles = StyleSheet.create({
   seeAllText: {
     fontSize: 12,
     fontWeight: '600' as const,
-    color: Colors.primary,
+    color: colors.primary,
   },
   statsRow: {
     flexDirection: 'row',
@@ -722,11 +725,11 @@ const styles = StyleSheet.create({
   },
   statCard: {
     flex: 1,
-    backgroundColor: Colors.white,
+    backgroundColor: colors.card,
     borderRadius: 16,
     padding: 12,
     alignItems: 'center',
-    shadowColor: Colors.shadowColor,
+    shadowColor: colors.shadowColor,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.08,
     shadowRadius: 8,
@@ -743,27 +746,27 @@ const styles = StyleSheet.create({
   statValue: {
     fontSize: 20,
     fontWeight: '700' as const,
-    color: Colors.text,
+    color: colors.text,
   },
   statUnit: {
     fontSize: 11,
     fontWeight: '500' as const,
-    color: Colors.textSecondary,
+    color: colors.textSecondary,
     marginTop: 2,
   },
   statLabel: {
     fontSize: 11,
     fontWeight: '600' as const,
-    color: Colors.textLight,
+    color: colors.textLight,
     textTransform: 'uppercase' as const,
     letterSpacing: 0.5,
     marginTop: 4,
   },
   calendarCard: {
-    backgroundColor: Colors.white,
+    backgroundColor: colors.card,
     borderRadius: 20,
     padding: 16,
-    shadowColor: Colors.shadowColor,
+    shadowColor: colors.shadowColor,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.1,
     shadowRadius: 12,
@@ -774,10 +777,10 @@ const styles = StyleSheet.create({
     borderRadius: 12,
   },
   dailySummaryCard: {
-    backgroundColor: Colors.white,
+    backgroundColor: colors.card,
     borderRadius: 16,
     padding: 16,
-    shadowColor: Colors.shadowColor,
+    shadowColor: colors.shadowColor,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.08,
     shadowRadius: 8,
@@ -792,7 +795,7 @@ const styles = StyleSheet.create({
   dailySummaryDate: {
     fontSize: 13,
     fontWeight: '600' as const,
-    color: Colors.text,
+    color: colors.text,
   },
   dailySummaryStats: {
     flexDirection: 'row',
@@ -806,7 +809,7 @@ const styles = StyleSheet.create({
   dailyStatText: {
     fontSize: 12,
     fontWeight: '500' as const,
-    color: Colors.textSecondary,
+    color: colors.textSecondary,
   },
   exerciseChips: {
     flexDirection: 'row',
@@ -814,7 +817,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   exerciseChip: {
-    backgroundColor: Colors.accent,
+    backgroundColor: colors.accent,
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 20,
@@ -822,7 +825,7 @@ const styles = StyleSheet.create({
   exerciseChipText: {
     fontSize: 12,
     fontWeight: '500' as const,
-    color: Colors.text,
+    color: colors.text,
   },
   noWorkoutContainer: {
     alignItems: 'center',
@@ -830,12 +833,12 @@ const styles = StyleSheet.create({
   },
   noWorkoutText: {
     fontSize: 12,
-    color: Colors.textSecondary,
+    color: colors.textSecondary,
     textAlign: 'center',
     marginBottom: 12,
   },
   startWorkoutMini: {
-    backgroundColor: Colors.primary,
+    backgroundColor: colors.primary,
     paddingHorizontal: 20,
     paddingVertical: 10,
     borderRadius: 20,
@@ -843,7 +846,7 @@ const styles = StyleSheet.create({
   startWorkoutMiniText: {
     fontSize: 12,
     fontWeight: '600' as const,
-    color: Colors.white,
+    color: colors.white,
   },
   achievementsScroll: {
     paddingRight: 20,
@@ -867,11 +870,11 @@ const styles = StyleSheet.create({
   achievementTitle: {
     fontSize: 11,
     fontWeight: '600' as const,
-    color: Colors.text,
+    color: colors.text,
     textAlign: 'center',
   },
   achievementTitleLocked: {
-    color: Colors.textLight,
+    color: colors.textLight,
   },
   featuredScroll: {
     paddingRight: 20,
@@ -902,7 +905,7 @@ const styles = StyleSheet.create({
   featuredName: {
     fontSize: 14,
     fontWeight: '700' as const,
-    color: Colors.white,
+    color: colors.white,
     marginBottom: 4,
   },
   featuredDuration: {
@@ -910,10 +913,10 @@ const styles = StyleSheet.create({
     color: 'rgba(255,255,255,0.85)',
   },
   motivationCard: {
-    backgroundColor: Colors.white,
+    backgroundColor: colors.card,
     borderRadius: 20,
     padding: 20,
-    shadowColor: Colors.shadowColor,
+    shadowColor: colors.shadowColor,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.1,
     shadowRadius: 12,
@@ -922,14 +925,14 @@ const styles = StyleSheet.create({
   motivationQuote: {
     fontSize: 14,
     fontWeight: '500' as const,
-    color: Colors.text,
+    color: colors.text,
     lineHeight: 24,
     fontStyle: 'italic',
     marginBottom: 12,
   },
   motivationAuthor: {
     fontSize: 14,
-    color: Colors.textSecondary,
+    color: colors.textSecondary,
     fontWeight: '600' as const,
   },
 });

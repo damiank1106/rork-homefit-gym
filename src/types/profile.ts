@@ -1,7 +1,7 @@
 import { EquipmentId } from './training';
 
 export type WeightUnit = 'kg' | 'lb';
-export type HeightUnit = 'cm' | 'imperial';
+export type HeightUnit = 'cm' | 'ft';
 
 export interface UserProfile {
   birthday: string | null;
