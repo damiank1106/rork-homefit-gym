@@ -40,9 +40,10 @@ const convertFeetInchesToCm = (feet: number, inches: number) => {
 };
 
 const calculateAge = (birthday: string): number | null => {
-  if (!birthday) return null;
+  const normalized = birthday.trim();
+  if (!normalized) return null;
 
-  const birthDate = new Date(birthday);
+  const birthDate = new Date(normalized);
   if (isNaN(birthDate.getTime())) return null;
 
   const today = new Date();
