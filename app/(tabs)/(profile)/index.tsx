@@ -9,7 +9,7 @@ import {
   TextInput,
   Keyboard,
   TouchableWithoutFeedback,
-  KeyboardTypeOptions,
+  Modal,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -39,6 +39,14 @@ const convertFeetInchesToCm = (feet: number, inches: number) => {
   return Math.round((feet * 12 + inches) * 2.54 * 10) / 10;
 };
 
+const convertKgToLb = (kg: number) => Math.round(kg * 2.20462 * 10) / 10;
+const convertLbToKg = (lb: number) => Math.round((lb / 2.20462) * 10) / 10;
+
+const HEIGHT_CM_OPTIONS = Array.from({ length: 131 }, (_, i) => 120 + i);
+const HEIGHT_FEET_OPTIONS = [4, 5, 6, 7];
+const HEIGHT_INCH_OPTIONS = Array.from({ length: 12 }, (_, i) => i);
+const WEIGHT_KG_OPTIONS = Array.from({ length: 171 }, (_, i) => 30 + i);
+
 const calculateAge = (birthday: string): number | null => {
   if (!birthday) return null;
 
@@ -61,21 +69,26 @@ const calculateAge = (birthday: string): number | null => {
 
 export default function ProfileScreen() {
   const fadeAnim = useRef(new Animated.Value(0)).current;
-  const birthdayRef = useRef<TextInput>(null);
-  const heightCmRef = useRef<TextInput>(null);
-  const heightFeetRef = useRef<TextInput>(null);
-  const heightInchesRef = useRef<TextInput>(null);
-  const weightRef = useRef<TextInput>(null);
   const [profile, setProfile] = useState<UserProfile>(DEFAULT_USER_PROFILE);
   const [isLoading, setIsLoading] = useState(true);
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
 
   const [birthdayInput, setBirthdayInput] = useState('');
-  const [heightInput, setHeightInput] = useState('');
-  const [heightFeetInput, setHeightFeetInput] = useState('');
-  const [heightInchesInput, setHeightInchesInput] = useState('');
+  const [heightCm, setHeightCm] = useState<number | null>(null);
   const [heightUnit, setHeightUnit] = useState<HeightUnit>('cm');
-  const [weightInput, setWeightInput] = useState('');
+  const [weightValue, setWeightValue] = useState<number | null>(null);
+  const [weightUnit, setWeightUnitState] = useState<WeightUnit>('kg');
+  const [heightModalVisible, setHeightModalVisible] = useState(false);
+  const [weightModalVisible, setWeightModalVisible] = useState(false);
+  const [birthdayModalVisible, setBirthdayModalVisible] = useState(false);
+
+  const [tempHeightUnit, setTempHeightUnit] = useState<HeightUnit>('cm');
+  const [tempHeightCm, setTempHeightCm] = useState<number | null>(null);
+  const [tempHeightFeet, setTempHeightFeet] = useState<number>(5);
+  const [tempHeightInches, setTempHeightInches] = useState<number>(6);
+
+  const [tempWeightUnit, setTempWeightUnit] = useState<WeightUnit>('kg');
+  const [tempWeightValue, setTempWeightValue] = useState<number | null>(null);
 
   useEffect(() => {
     Animated.timing(fadeAnim, {
@@ -104,14 +117,10 @@ export default function ProfileScreen() {
       setBirthdayInput(stored.birthday ?? '');
       const resolvedUnit = stored.heightUnit ?? 'cm';
       setHeightUnit(resolvedUnit);
-
-      setHeightInput(stored.heightCm?.toString() ?? '');
-      if (stored.heightCm) {
-        const { feet, inches } = convertCmToFeetInches(stored.heightCm);
-        setHeightFeetInput(feet.toString());
-        setHeightInchesInput(inches.toString());
-      }
-      setWeightInput(stored.weight?.toString() ?? '');
+      setHeightCm(stored.heightCm ?? null);
+      const resolvedWeightUnit = stored.weightUnit ?? 'kg';
+      setWeightUnitState(resolvedWeightUnit);
+      setWeightValue(stored.weight ?? null);
     }
     setIsLoading(false);
   };
@@ -134,22 +143,12 @@ export default function ProfileScreen() {
     const birthDateInput = birthdayInput.trim();
     const age = calculateAge(birthDateInput);
 
-    let heightCm: number | null = null;
-    if (heightUnit === 'cm') {
-      heightCm = heightInput ? parseFloat(heightInput) : null;
-    } else {
-      const feet = heightFeetInput ? parseInt(heightFeetInput, 10) : 0;
-      const inches = heightInchesInput ? parseFloat(heightInchesInput) : 0;
-      if (heightFeetInput || heightInchesInput) {
-        heightCm = convertFeetInchesToCm(feet, inches);
-      }
-    }
-
-    const weight = weightInput ? parseFloat(weightInput) : null;
+    const heightCmValue = heightCm;
+    const weight = weightValue;
 
     const isInvalid =
       (birthDateInput && age === null) ||
-      (heightCm !== null && (isNaN(heightCm) || heightCm < 0)) ||
+      (heightCmValue !== null && (isNaN(heightCmValue) || heightCmValue < 0)) ||
       (weight !== null && (isNaN(weight) || weight < 0));
 
     if (isInvalid) {
@@ -162,9 +161,10 @@ export default function ProfileScreen() {
       ...profile,
       birthday: birthDateInput || null,
       age,
-      heightCm,
+      heightCm: heightCmValue,
       weight,
       heightUnit,
+      weightUnit,
     };
 
     await saveUserProfile(updatedProfile);
@@ -174,7 +174,7 @@ export default function ProfileScreen() {
     setTimeout(() => {
       setSaveStatus('idle');
     }, 2000);
-  }, [birthdayInput, heightFeetInput, heightInchesInput, heightInput, heightUnit, weightInput, profile]);
+  }, [birthdayInput, heightCm, heightUnit, profile, weightUnit, weightValue]);
 
   const toggleEquipment = useCallback(async (equipmentId: EquipmentId) => {
     const newSelected = profile.selectedEquipment.includes(equipmentId)
@@ -190,89 +190,68 @@ export default function ProfileScreen() {
     await saveUserProfile(updatedProfile);
   }, [profile]);
 
-  const setWeightUnit = useCallback(async (unit: WeightUnit) => {
-    const updatedProfile: UserProfile = {
-      ...profile,
-      weightUnit: unit,
-    };
-    setProfile(updatedProfile);
-    await saveUserProfile(updatedProfile);
-  }, [profile]);
-
   const handleHeightUnitChange = useCallback((unit: HeightUnit) => {
-    if (unit === heightUnit) return;
+    if (unit === tempHeightUnit) return;
 
-    if (unit === 'cm') {
-      const feet = heightFeetInput ? parseInt(heightFeetInput, 10) : 0;
-      const inches = heightInchesInput ? parseFloat(heightInchesInput) : 0;
-      if (heightFeetInput || heightInchesInput) {
-        const cm = convertFeetInchesToCm(feet, inches);
-        setHeightInput(cm.toString());
-      }
-    } else {
-      const cmValue = heightInput ? parseFloat(heightInput) : null;
-      if (cmValue) {
-        const { feet, inches } = convertCmToFeetInches(cmValue);
-        setHeightFeetInput(feet.toString());
-        setHeightInchesInput(inches.toString());
-      }
+    if (unit === 'imperial' && tempHeightCm !== null) {
+      const { feet, inches } = convertCmToFeetInches(tempHeightCm);
+      setTempHeightFeet(feet);
+      setTempHeightInches(inches);
     }
 
-    setHeightUnit(unit);
-  }, [heightFeetInput, heightInchesInput, heightInput, heightUnit]);
+    if (unit === 'cm' && tempHeightCm === null) {
+      setTempHeightCm(convertFeetInchesToCm(tempHeightFeet, tempHeightInches));
+    }
 
-  const InputCard = ({
-    icon: Icon,
-    label,
-    value,
-    onChangeText,
-    placeholder,
-    suffix,
-    inputRef,
-    returnKeyType = 'default',
-    onSubmitEditing,
-    blurOnSubmit = false,
-    keyboardType = 'default',
-    helperText,
-  }: {
-    icon: React.ElementType;
-    label: string;
-    value: string;
-    onChangeText: (text: string) => void;
-    placeholder: string;
-    suffix?: string;
-    inputRef?: React.RefObject<TextInput>;
-    returnKeyType?: 'default' | 'done' | 'next' | 'go';
-    onSubmitEditing?: () => void;
-    blurOnSubmit?: boolean;
-    keyboardType?: KeyboardTypeOptions;
-    helperText?: string;
-  }) => (
-    <View style={styles.inputCard}>
-      <View style={styles.inputIconContainer}>
-        <Icon size={20} color={Colors.primary} strokeWidth={2} />
-      </View>
-      <View style={styles.inputContent}>
-        <Text style={styles.inputLabel}>{label}</Text>
-        <View style={styles.inputRow}>
-          <TextInput
-            style={styles.textInput}
-            value={value}
-            onChangeText={onChangeText}
-            placeholder={placeholder}
-            placeholderTextColor={Colors.textLight}
-            keyboardType={keyboardType}
-            returnKeyType={returnKeyType}
-            blurOnSubmit={blurOnSubmit}
-            ref={inputRef}
-            onSubmitEditing={onSubmitEditing}
-          />
-          {suffix && <Text style={styles.inputSuffix}>{suffix}</Text>}
-        </View>
-        {helperText && <Text style={styles.helperText}>{helperText}</Text>}
-      </View>
-    </View>
-  );
+    setTempHeightUnit(unit);
+  }, [tempHeightCm, tempHeightFeet, tempHeightInches, tempHeightUnit]);
+
+  const handleTempWeightUnitChange = (unit: WeightUnit) => {
+    if (unit === tempWeightUnit) return;
+
+    if (tempWeightValue !== null) {
+      const converted = unit === 'kg' ? convertLbToKg(tempWeightValue) : convertKgToLb(tempWeightValue);
+      setTempWeightValue(converted);
+    }
+
+    setTempWeightUnit(unit);
+  };
+
+  const selectHeightCm = (value: number) => {
+    setTempHeightCm(value);
+    const { feet, inches } = convertCmToFeetInches(value);
+    setTempHeightFeet(feet);
+    setTempHeightInches(inches);
+  };
+
+  const selectHeightFeet = (value: number) => {
+    setTempHeightFeet(value);
+    setTempHeightCm(convertFeetInchesToCm(value, tempHeightInches));
+  };
+
+  const selectHeightInches = (value: number) => {
+    setTempHeightInches(value);
+    setTempHeightCm(convertFeetInchesToCm(tempHeightFeet, value));
+  };
+
+  const selectWeightValue = (value: number) => {
+    setTempWeightValue(value);
+  };
+
+  const formatHeightDisplay = () => {
+    if (!heightCm) return 'Add height';
+    if (heightUnit === 'cm') return `${heightCm} cm`;
+
+    const { feet, inches } = convertCmToFeetInches(heightCm);
+    const inchDisplay = inches % 1 === 0 ? inches.toString() : inches.toFixed(1);
+    return `${feet} ft ${inchDisplay} in`;
+  };
+
+  const formatWeightDisplay = () => {
+    if (!weightValue) return 'Add weight';
+    const displayValue = weightValue % 1 === 0 ? weightValue.toString() : weightValue.toFixed(1);
+    return `${displayValue} ${weightUnit}`;
+  };
 
   const calculatedAge = calculateAge(birthdayInput);
   const ageHelperText = birthdayInput
@@ -280,6 +259,39 @@ export default function ProfileScreen() {
       ? `Age: ${calculatedAge} years`
       : 'Enter a valid date (YYYY-MM-DD)'
     : 'Add your birth date to calculate age';
+
+  const openHeightModal = () => {
+    setTempHeightUnit(heightUnit);
+    setTempHeightCm(heightCm);
+    if (heightCm) {
+      const { feet, inches } = convertCmToFeetInches(heightCm);
+      setTempHeightFeet(feet);
+      setTempHeightInches(inches);
+    }
+    setHeightModalVisible(true);
+  };
+
+  const openWeightModal = () => {
+    setTempWeightUnit(weightUnit);
+    setTempWeightValue(weightValue);
+    setWeightModalVisible(true);
+  };
+
+  const openBirthdayModal = () => {
+    setBirthdayModalVisible(true);
+  };
+
+  const confirmHeightSelection = () => {
+    setHeightUnit(tempHeightUnit);
+    setHeightCm(tempHeightCm);
+    setHeightModalVisible(false);
+  };
+
+  const confirmWeightSelection = () => {
+    setWeightUnitState(tempWeightUnit);
+    setWeightValue(tempWeightValue);
+    setWeightModalVisible(false);
+  };
 
   const EquipmentItem = ({ equipment }: { equipment: typeof EQUIPMENT[0] }) => {
     const isSelected = profile.selectedEquipment.includes(equipment.id);
@@ -379,165 +391,46 @@ export default function ProfileScreen() {
                 <View style={styles.section}>
                   <Text style={styles.sectionTitle}>Your Details</Text>
                   <View style={styles.inputsContainer}>
-                    <InputCard
-                      icon={Calendar}
-                      label="Birthday"
-                      value={birthdayInput}
-                      onChangeText={setBirthdayInput}
-                      placeholder="YYYY-MM-DD"
-                      inputRef={birthdayRef}
-                      returnKeyType="next"
-                      blurOnSubmit={false}
-                      keyboardType="numbers-and-punctuation"
-                      helperText={ageHelperText}
-                    />
-                    <View style={styles.inputCard}>
+                    <Pressable style={styles.inputCard} onPress={openBirthdayModal}>
+                      <View style={styles.inputIconContainer}>
+                        <Calendar size={20} color={Colors.primary} strokeWidth={2} />
+                      </View>
+                      <View style={styles.inputContent}>
+                        <Text style={styles.inputLabel}>Birthday</Text>
+                        <Text style={styles.valueText}>
+                          {birthdayInput || 'Tap to set birthday'}
+                        </Text>
+                        <Text style={styles.helperText}>{ageHelperText}</Text>
+                      </View>
+                    </Pressable>
+
+                    <Pressable style={styles.inputCard} onPress={openHeightModal}>
                       <View style={styles.inputIconContainer}>
                         <Ruler size={20} color={Colors.primary} strokeWidth={2} />
                       </View>
                       <View style={styles.inputContent}>
                         <View style={styles.inputHeaderRow}>
                           <Text style={styles.inputLabel}>Height</Text>
-                          <View style={styles.unitToggle}>
-                            <Pressable
-                              onPress={() => handleHeightUnitChange('cm')}
-                              style={[
-                                styles.unitButton,
-                                heightUnit === 'cm' && styles.unitButtonActive,
-                              ]}
-                            >
-                              <Text
-                                style={[
-                                  styles.unitText,
-                                  heightUnit === 'cm' && styles.unitTextActive,
-                                ]}
-                              >
-                                cm
-                              </Text>
-                            </Pressable>
-                            <Pressable
-                              onPress={() => handleHeightUnitChange('imperial')}
-                              style={[
-                                styles.unitButton,
-                                heightUnit === 'imperial' && styles.unitButtonActive,
-                              ]}
-                            >
-                              <Text
-                                style={[
-                                  styles.unitText,
-                                  heightUnit === 'imperial' && styles.unitTextActive,
-                                ]}
-                              >
-                                ft / in
-                              </Text>
-                            </Pressable>
-                          </View>
+                          <Text style={styles.unitBadge}>{heightUnit === 'cm' ? 'cm' : 'ft / in'}</Text>
                         </View>
-
-                        {heightUnit === 'cm' ? (
-                          <View style={styles.inputRow}>
-                            <TextInput
-                              style={styles.textInput}
-                              value={heightInput}
-                              onChangeText={setHeightInput}
-                              placeholder="Enter height"
-                              placeholderTextColor={Colors.textLight}
-                              keyboardType="default"
-                              returnKeyType="default"
-                              blurOnSubmit={false}
-                              ref={heightCmRef}
-                            />
-                            <Text style={styles.inputSuffix}>cm</Text>
-                          </View>
-                        ) : (
-                          <View style={styles.heightImperialRow}>
-                            <View style={styles.heightSubField}>
-                              <Text style={styles.heightSubLabel}>Feet</Text>
-                              <TextInput
-                                style={styles.textInput}
-                                value={heightFeetInput}
-                                onChangeText={setHeightFeetInput}
-                                placeholder="0"
-                                placeholderTextColor={Colors.textLight}
-                                keyboardType="default"
-                                returnKeyType="default"
-                                blurOnSubmit={false}
-                                ref={heightFeetRef}
-                              />
-                            </View>
-                            <View style={styles.heightSubField}>
-                              <Text style={styles.heightSubLabel}>Inches</Text>
-                              <TextInput
-                                style={styles.textInput}
-                                value={heightInchesInput}
-                                onChangeText={setHeightInchesInput}
-                                placeholder="0"
-                                placeholderTextColor={Colors.textLight}
-                                keyboardType="default"
-                                returnKeyType="default"
-                                blurOnSubmit={false}
-                                ref={heightInchesRef}
-                              />
-                            </View>
-                          </View>
-                        )}
+                        <Text style={styles.valueText}>{formatHeightDisplay()}</Text>
+                        <Text style={styles.helperText}>Opens modal picker</Text>
                       </View>
-                    </View>
-                    <View style={styles.inputCard}>
+                    </Pressable>
+
+                    <Pressable style={styles.inputCard} onPress={openWeightModal}>
                       <View style={styles.inputIconContainer}>
                         <Scale size={20} color={Colors.primary} strokeWidth={2} />
                       </View>
                       <View style={styles.inputContent}>
-                        <Text style={styles.inputLabel}>Weight</Text>
-                        <View style={styles.inputRow}>
-                          <TextInput
-                            style={[styles.textInput, { flex: 1 }]}
-                            value={weightInput}
-                            onChangeText={setWeightInput}
-                            placeholder="Enter weight"
-                            placeholderTextColor={Colors.textLight}
-                            keyboardType="default"
-                            returnKeyType="default"
-                            blurOnSubmit={false}
-                            ref={weightRef}
-                          />
-                          <View style={styles.unitToggle}>
-                            <Pressable
-                              onPress={() => setWeightUnit('kg')}
-                              style={[
-                                styles.unitButton,
-                                profile.weightUnit === 'kg' && styles.unitButtonActive,
-                              ]}
-                            >
-                              <Text
-                                style={[
-                                  styles.unitText,
-                                  profile.weightUnit === 'kg' && styles.unitTextActive,
-                                ]}
-                              >
-                                kg
-                              </Text>
-                            </Pressable>
-                            <Pressable
-                              onPress={() => setWeightUnit('lb')}
-                              style={[
-                                styles.unitButton,
-                                profile.weightUnit === 'lb' && styles.unitButtonActive,
-                              ]}
-                            >
-                              <Text
-                                style={[
-                                  styles.unitText,
-                                  profile.weightUnit === 'lb' && styles.unitTextActive,
-                                ]}
-                              >
-                                lb
-                              </Text>
-                            </Pressable>
-                          </View>
+                        <View style={styles.inputHeaderRow}>
+                          <Text style={styles.inputLabel}>Weight</Text>
+                          <Text style={styles.unitBadge}>{weightUnit}</Text>
                         </View>
+                        <Text style={styles.valueText}>{formatWeightDisplay()}</Text>
+                        <Text style={styles.helperText}>Tap to convert kg / lb</Text>
                       </View>
-                    </View>
+                    </Pressable>
                   </View>
 
                   <Pressable onPress={handleSaveProfile} style={styles.saveButton}>
@@ -580,6 +473,175 @@ export default function ProfileScreen() {
                 <Text style={styles.version}>HomeFit Gym v1.0.0</Text>
               </Animated.View>
             </ScrollView>
+
+            <Modal visible={birthdayModalVisible} transparent animationType="slide">
+              <View style={styles.modalOverlay}>
+                <View style={styles.modalContainer}>
+                  <Text style={styles.modalTitle}>Select Birthday</Text>
+                  <Text style={styles.modalSubtitle}>Enter your birth date (YYYY-MM-DD)</Text>
+                  <TextInput
+                    style={styles.modalInput}
+                    value={birthdayInput}
+                    onChangeText={setBirthdayInput}
+                    placeholder="YYYY-MM-DD"
+                    placeholderTextColor={Colors.textLight}
+                  />
+                  <Text style={styles.modalHelper}>{ageHelperText}</Text>
+                  <View style={styles.modalActions}>
+                    <Pressable onPress={() => setBirthdayModalVisible(false)} style={styles.secondaryButton}>
+                      <Text style={styles.secondaryButtonText}>Cancel</Text>
+                    </Pressable>
+                    <Pressable onPress={() => setBirthdayModalVisible(false)} style={styles.primaryButton}>
+                      <Text style={styles.primaryButtonText}>Save</Text>
+                    </Pressable>
+                  </View>
+                </View>
+              </View>
+            </Modal>
+
+            <Modal visible={heightModalVisible} transparent animationType="slide">
+              <View style={styles.modalOverlay}>
+                <View style={styles.modalContainer}>
+                  <Text style={styles.modalTitle}>Select Height</Text>
+                  <Text style={styles.modalSubtitle}>Switch units and pick your height</Text>
+                  <View style={styles.unitToggle}>
+                    <Pressable
+                      onPress={() => handleHeightUnitChange('cm')}
+                      style={[styles.unitButton, tempHeightUnit === 'cm' && styles.unitButtonActive]}
+                    >
+                      <Text style={[styles.unitText, tempHeightUnit === 'cm' && styles.unitTextActive]}>cm</Text>
+                    </Pressable>
+                    <Pressable
+                      onPress={() => handleHeightUnitChange('imperial')}
+                      style={[styles.unitButton, tempHeightUnit === 'imperial' && styles.unitButtonActive]}
+                    >
+                      <Text
+                        style={[styles.unitText, tempHeightUnit === 'imperial' && styles.unitTextActive]}
+                      >
+                        ft / in
+                      </Text>
+                    </Pressable>
+                  </View>
+
+                  {tempHeightUnit === 'cm' ? (
+                    <ScrollView contentContainerStyle={styles.pickerGrid}>
+                      {HEIGHT_CM_OPTIONS.map((option) => (
+                        <Pressable
+                          key={`cm-${option}`}
+                          style={[styles.pickerOption, tempHeightCm === option && styles.pickerOptionActive]}
+                          onPress={() => selectHeightCm(option)}
+                        >
+                          <Text
+                            style={[styles.pickerValue, tempHeightCm === option && styles.pickerValueActive]}
+                          >
+                            {option} cm
+                          </Text>
+                        </Pressable>
+                      ))}
+                    </ScrollView>
+                  ) : (
+                    <View style={styles.imperialPickerRow}>
+                      <View style={styles.imperialColumn}>
+                        <Text style={styles.modalSubtitle}>Feet</Text>
+                        <ScrollView>
+                          {HEIGHT_FEET_OPTIONS.map((option) => (
+                            <Pressable
+                              key={`ft-${option}`}
+                              style={[styles.pickerOption, tempHeightFeet === option && styles.pickerOptionActive]}
+                              onPress={() => selectHeightFeet(option)}
+                            >
+                              <Text
+                                style={[styles.pickerValue, tempHeightFeet === option && styles.pickerValueActive]}
+                              >
+                                {option}
+                              </Text>
+                            </Pressable>
+                          ))}
+                        </ScrollView>
+                      </View>
+                      <View style={styles.imperialColumn}>
+                        <Text style={styles.modalSubtitle}>Inches</Text>
+                        <ScrollView>
+                          {HEIGHT_INCH_OPTIONS.map((option) => (
+                            <Pressable
+                              key={`in-${option}`}
+                              style={[styles.pickerOption, tempHeightInches === option && styles.pickerOptionActive]}
+                              onPress={() => selectHeightInches(option)}
+                            >
+                              <Text
+                                style={[styles.pickerValue, tempHeightInches === option && styles.pickerValueActive]}
+                              >
+                                {option}
+                              </Text>
+                            </Pressable>
+                          ))}
+                        </ScrollView>
+                      </View>
+                    </View>
+                  )}
+
+                  <View style={styles.modalActions}>
+                    <Pressable onPress={() => setHeightModalVisible(false)} style={styles.secondaryButton}>
+                      <Text style={styles.secondaryButtonText}>Cancel</Text>
+                    </Pressable>
+                    <Pressable onPress={confirmHeightSelection} style={styles.primaryButton}>
+                      <Text style={styles.primaryButtonText}>Save</Text>
+                    </Pressable>
+                  </View>
+                </View>
+              </View>
+            </Modal>
+
+            <Modal visible={weightModalVisible} transparent animationType="slide">
+              <View style={styles.modalOverlay}>
+                <View style={styles.modalContainer}>
+                  <Text style={styles.modalTitle}>Select Weight</Text>
+                  <Text style={styles.modalSubtitle}>Choose unit and pick a weight value</Text>
+                  <View style={styles.unitToggle}>
+                    <Pressable
+                      onPress={() => handleTempWeightUnitChange('kg')}
+                      style={[styles.unitButton, tempWeightUnit === 'kg' && styles.unitButtonActive]}
+                    >
+                      <Text style={[styles.unitText, tempWeightUnit === 'kg' && styles.unitTextActive]}>kg</Text>
+                    </Pressable>
+                    <Pressable
+                      onPress={() => handleTempWeightUnitChange('lb')}
+                      style={[styles.unitButton, tempWeightUnit === 'lb' && styles.unitButtonActive]}
+                    >
+                      <Text style={[styles.unitText, tempWeightUnit === 'lb' && styles.unitTextActive]}>lb</Text>
+                    </Pressable>
+                  </View>
+
+                  <ScrollView contentContainerStyle={styles.pickerGrid}>
+                    {(tempWeightUnit === 'kg'
+                      ? WEIGHT_KG_OPTIONS
+                      : WEIGHT_KG_OPTIONS.map((kg) => parseFloat(convertKgToLb(kg).toFixed(1)))
+                    ).map((option) => (
+                      <Pressable
+                        key={`${tempWeightUnit}-${option}`}
+                        style={[styles.pickerOption, tempWeightValue === option && styles.pickerOptionActive]}
+                        onPress={() => selectWeightValue(option)}
+                      >
+                        <Text
+                          style={[styles.pickerValue, tempWeightValue === option && styles.pickerValueActive]}
+                        >
+                          {option} {tempWeightUnit}
+                        </Text>
+                      </Pressable>
+                    ))}
+                  </ScrollView>
+
+                  <View style={styles.modalActions}>
+                    <Pressable onPress={() => setWeightModalVisible(false)} style={styles.secondaryButton}>
+                      <Text style={styles.secondaryButtonText}>Cancel</Text>
+                    </Pressable>
+                    <Pressable onPress={confirmWeightSelection} style={styles.primaryButton}>
+                      <Text style={styles.primaryButtonText}>Save</Text>
+                    </Pressable>
+                  </View>
+                </View>
+              </View>
+            </Modal>
           </View>
         </TouchableWithoutFeedback>
 
@@ -721,32 +783,130 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
     marginBottom: 4,
   },
+  valueText: {
+    fontSize: 18,
+    fontWeight: '700' as const,
+    color: Colors.text,
+  },
+  unitBadge: {
+    backgroundColor: Colors.accent,
+    color: Colors.textSecondary,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 8,
+    fontSize: 12,
+    fontWeight: '700' as const,
+  },
   inputHeaderRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 8,
   },
-  inputRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  textInput: {
-    fontSize: 18,
-    fontWeight: '600' as const,
-    color: Colors.text,
-    padding: 0,
-    minWidth: 80,
-  },
   helperText: {
     fontSize: 12,
     color: Colors.textLight,
     marginTop: 6,
   },
-  inputSuffix: {
-    fontSize: 14,
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.35)',
+    justifyContent: 'center',
+    paddingHorizontal: 20,
+  },
+  modalContainer: {
+    backgroundColor: Colors.white,
+    borderRadius: 16,
+    padding: 16,
+    gap: 12,
+  },
+  modalTitle: {
+    fontSize: 16,
+    fontWeight: '700' as const,
+    color: Colors.text,
+  },
+  modalSubtitle: {
+    fontSize: 12,
+    color: Colors.textSecondary,
+  },
+  modalHelper: {
+    fontSize: 12,
     color: Colors.textLight,
-    marginLeft: 8,
+  },
+  modalInput: {
+    borderWidth: 1,
+    borderColor: Colors.border,
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    fontSize: 16,
+    color: Colors.text,
+  },
+  modalActions: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 10,
+  },
+  secondaryButton: {
+    flex: 1,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    paddingVertical: 12,
+    borderRadius: 10,
+    alignItems: 'center',
+  },
+  secondaryButtonText: {
+    fontSize: 14,
+    color: Colors.text,
+    fontWeight: '600' as const,
+  },
+  primaryButton: {
+    flex: 1,
+    backgroundColor: Colors.primary,
+    paddingVertical: 12,
+    borderRadius: 10,
+    alignItems: 'center',
+  },
+  primaryButtonText: {
+    fontSize: 14,
+    color: Colors.white,
+    fontWeight: '700' as const,
+  },
+  pickerGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    paddingTop: 8,
+  },
+  pickerOption: {
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    minWidth: '30%',
+    alignItems: 'center',
+  },
+  pickerOptionActive: {
+    borderColor: Colors.primary,
+    backgroundColor: Colors.accent,
+  },
+  pickerValue: {
+    fontSize: 14,
+    color: Colors.textSecondary,
+    fontWeight: '600' as const,
+  },
+  pickerValueActive: {
+    color: Colors.primary,
+  },
+  imperialPickerRow: {
+    flexDirection: 'row',
+    gap: 12,
+    paddingTop: 8,
+  },
+  imperialColumn: {
+    flex: 1,
+    gap: 6,
   },
   unitToggle: {
     flexDirection: 'row',
