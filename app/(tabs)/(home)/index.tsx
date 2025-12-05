@@ -67,7 +67,7 @@ type MarkedDates = {
 export default function HomeScreen() {
   const router = useRouter();
   const { width } = useWindowDimensions();
-  const { colors } = useTheme();
+  const { colors, customIconColor, customContainerColor } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
 
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -319,7 +319,7 @@ export default function HomeScreen() {
             ]}
           >
             <LinearGradient
-              colors={[colors.primary, colors.primaryDark]}
+              colors={customContainerColor ? [customContainerColor, customContainerColor] : [colors.primary, colors.primaryDark]}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
               style={styles.heroGradient}
@@ -340,8 +340,8 @@ export default function HomeScreen() {
                   style={styles.heroButton}
                   onPress={navigateToExercises}
                 >
-                  <Play size={18} color={colors.primary} fill={colors.primary} />
-                  <Text style={styles.heroButtonText}>Start Workout</Text>
+                  <Play size={18} color={customContainerColor || colors.primary} fill={customContainerColor || colors.primary} />
+                  <Text style={[styles.heroButtonText, customContainerColor && { color: customContainerColor }]}>Start Workout</Text>
                 </Pressable>
               </View>
               <View style={styles.heroImageContainer}>
@@ -397,14 +397,14 @@ export default function HomeScreen() {
                   backgroundColor: 'transparent',
                   calendarBackground: 'transparent',
                   textSectionTitleColor: colors.textSecondary,
-                  selectedDayBackgroundColor: colors.primary,
+                  selectedDayBackgroundColor: customContainerColor || colors.primary,
                   selectedDayTextColor: colors.white,
-                  todayTextColor: colors.primary,
+                  todayTextColor: customContainerColor || colors.primary,
                   dayTextColor: colors.text,
                   textDisabledColor: colors.textLight,
-                  dotColor: colors.primary,
+                  dotColor: customContainerColor || colors.primary,
                   selectedDotColor: colors.white,
-                  arrowColor: colors.primary,
+                  arrowColor: customContainerColor || colors.primary,
                   monthTextColor: colors.text,
                   textDayFontWeight: '500' as const,
                   textMonthFontWeight: '700' as const,

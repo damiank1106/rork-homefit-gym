@@ -7,6 +7,7 @@ import {
   Pressable,
   Platform,
   TouchableWithoutFeedback,
+  useWindowDimensions
 } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
 import { useTheme } from '@/src/context/ThemeContext';
@@ -30,7 +31,11 @@ export default function BirthdayPicker({
   onSave,
   initialDate,
 }: BirthdayPickerProps) {
-  const { colors } = useTheme();
+  const { colors, theme } = useTheme();
+  const { width } = useWindowDimensions();
+  const isSmallScreen = width < 768;
+  const isCrispyBlack = isSmallScreen && theme === 'dark';
+  const crispyBlackColor = '#000000';
   
   const initial = useMemo(() => {
     if (initialDate) {
@@ -108,11 +113,11 @@ export default function BirthdayPicker({
                   <Picker
                     selectedValue={selectedMonth}
                     onValueChange={(itemValue) => setSelectedMonth(itemValue)}
-                    style={[styles.picker, { color: colors.text }]}
-                    itemStyle={{ color: colors.text, fontSize: 16 }}
+                    style={[styles.picker, { color: isCrispyBlack ? crispyBlackColor : colors.text }]}
+                    itemStyle={{ color: isCrispyBlack ? crispyBlackColor : colors.text, fontSize: 16 }}
                   >
                     {MONTHS.map((month, index) => (
-                      <Picker.Item key={month} label={month} value={index} />
+                      <Picker.Item key={month} label={month} value={index} color={isCrispyBlack ? crispyBlackColor : undefined} />
                     ))}
                   </Picker>
                 </View>
@@ -123,11 +128,11 @@ export default function BirthdayPicker({
                   <Picker
                     selectedValue={selectedDay}
                     onValueChange={(itemValue) => setSelectedDay(itemValue)}
-                    style={[styles.picker, { color: colors.text }]}
-                    itemStyle={{ color: colors.text, fontSize: 16 }}
+                    style={[styles.picker, { color: isCrispyBlack ? crispyBlackColor : colors.text }]}
+                    itemStyle={{ color: isCrispyBlack ? crispyBlackColor : colors.text, fontSize: 16 }}
                   >
                     {days.map((day) => (
-                      <Picker.Item key={day} label={day.toString()} value={day} />
+                      <Picker.Item key={day} label={day.toString()} value={day} color={isCrispyBlack ? crispyBlackColor : undefined} />
                     ))}
                   </Picker>
                 </View>
@@ -138,11 +143,11 @@ export default function BirthdayPicker({
                   <Picker
                     selectedValue={selectedYear}
                     onValueChange={(itemValue) => setSelectedYear(itemValue)}
-                    style={[styles.picker, { color: colors.text }]}
-                    itemStyle={{ color: colors.text, fontSize: 16 }}
+                    style={[styles.picker, { color: isCrispyBlack ? crispyBlackColor : colors.text }]}
+                    itemStyle={{ color: isCrispyBlack ? crispyBlackColor : colors.text, fontSize: 16 }}
                   >
                     {years.map((year) => (
-                      <Picker.Item key={year} label={year.toString()} value={year} />
+                      <Picker.Item key={year} label={year.toString()} value={year} color={isCrispyBlack ? crispyBlackColor : undefined} />
                     ))}
                   </Picker>
                 </View>

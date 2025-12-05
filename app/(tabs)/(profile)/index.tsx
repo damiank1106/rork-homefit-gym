@@ -66,7 +66,7 @@ const calculateAge = (birthday: string): number | null => {
 };
 
 export default function ProfileScreen() {
-  const { colors } = useTheme();
+  const { colors, customIconColor } = useTheme();
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const [profile, setProfile] = useState<UserProfile>(DEFAULT_USER_PROFILE);
   const [isLoading, setIsLoading] = useState(true);
@@ -227,6 +227,7 @@ export default function ProfileScreen() {
           <View style={[
             styles.checkCircle,
             isSelected && styles.checkCircleSelected,
+            isSelected && customIconColor && { backgroundColor: customIconColor, borderColor: customIconColor }
           ]}>
             {isSelected && <Check size={14} color={colors.white} strokeWidth={3} />}
           </View>
@@ -237,8 +238,8 @@ export default function ProfileScreen() {
 
   const InputRow = ({ icon: Icon, label, value, onPress, helperText }: any) => (
     <Pressable onPress={onPress} style={styles.inputCard}>
-      <View style={styles.inputIconContainer}>
-        <Icon size={20} color={colors.primary} strokeWidth={2} />
+      <View style={[styles.inputIconContainer, customIconColor && { backgroundColor: customIconColor + '20' }]}>
+        <Icon size={20} color={customIconColor || colors.primary} strokeWidth={2} />
       </View>
       <View style={styles.inputContent}>
         <Text style={styles.inputLabel}>{label}</Text>
@@ -304,7 +305,7 @@ export default function ProfileScreen() {
                 <View style={styles.profileCard}>
                   <View style={styles.avatarContainer}>
                     <LinearGradient
-                      colors={[colors.primary, colors.secondary]}
+                      colors={customIconColor ? [customIconColor, customIconColor] : [colors.primary, colors.secondary]}
                       style={styles.avatar}
                     >
                       <User size={40} color={colors.white} strokeWidth={1.5} />
@@ -342,7 +343,7 @@ export default function ProfileScreen() {
 
                   <Pressable onPress={handleSaveProfile} style={styles.saveButton}>
                     <LinearGradient
-                      colors={[colors.primary, colors.primaryDark]}
+                      colors={customIconColor ? [customIconColor, customIconColor] : [colors.primary, colors.primaryDark]}
                       style={styles.saveButtonGradient}
                     >
                       {saveStatus === 'saving' ? (

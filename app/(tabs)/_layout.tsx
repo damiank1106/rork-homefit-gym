@@ -5,7 +5,7 @@ import { StyleSheet, View, useWindowDimensions, Platform } from 'react-native';
 import { useTheme } from '@/src/context/ThemeContext';
 
 export default function TabLayout() {
-  const { colors } = useTheme();
+  const { colors, customIconColor } = useTheme();
   const { width } = useWindowDimensions();
   const styles = useMemo(() => createStyles(colors), [colors]);
 
@@ -18,7 +18,7 @@ export default function TabLayout() {
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: colors.primary,
+        tabBarActiveTintColor: customIconColor || colors.primary,
         tabBarInactiveTintColor: colors.textLight,
         headerShown: false,
         tabBarStyle: styles.tabBar,

@@ -11,15 +11,31 @@ interface ThemeContextType {
   colors: ThemeColors;
   toggleTheme: () => void;
   setTheme: (theme: Theme) => void;
+  customIconColor: string | null;
+  setCustomIconColor: (color: string | null) => void;
+  customSwitchColor: string | null;
+  setCustomSwitchColor: (color: string | null) => void;
+  customContainerColor: string | null;
+  setCustomContainerColor: (color: string | null) => void;
 }
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
 const THEME_STORAGE_KEY = 'homefit_theme';
+const CUSTOM_COLORS_STORAGE_KEY = 'homefit_custom_colors';
+
+interface CustomColors {
+  iconColor: string | null;
+  switchColor: string | null;
+  containerColor: string | null;
+}
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
   const systemColorScheme = useColorScheme();
   const [theme, setThemeState] = useState<Theme>('light'); // Default to light
+  const [customIconColor, setCustomIconColorState] = useState<string | null>(null);
+  const [customSwitchColor, setCustomSwitchColorState] = useState<string | null>(null);
+  const [customContainerColor, setCustomContainerColorState] = useState<string | null>(null);
 
   const loadTheme = useCallback(async () => {
     try {
@@ -38,11 +54,21 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
       } else if (systemColorScheme) {
         setThemeState(systemColorScheme);
       }
+
+      // Load custom colors
+      const storedColors = await AsyncStorage.getItem(CUSTOM_COLORS_STORAGE_KEY);
+      if (storedColors) {
+        const parsedColors: CustomColors = JSON.parse(storedColors);
+        setCustomIconColorState(parsedColors.iconColor || null);
+        setCustomSwitchColorState(parsedColors.switchColor || null);
+        setCustomContainerColorState(parsedColors.containerColor || null);
+      }
     } catch (error) {
       console.log('Error loading theme:', error);
       // Clear corrupted theme data
       try {
         await AsyncStorage.removeItem(THEME_STORAGE_KEY);
+        await AsyncStorage.removeItem(CUSTOM_COLORS_STORAGE_KEY);
       } catch (clearError) {
         console.log('Error clearing theme:', clearError);
       }
@@ -52,6 +78,35 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     loadTheme();
   }, [loadTheme]);
+
+  const saveCustomColors = async (newColors: Partial<CustomColors>) => {
+    try {
+      const currentColors = {
+        iconColor: customIconColor,
+        switchColor: customSwitchColor,
+        containerColor: customContainerColor,
+        ...newColors
+      };
+      await AsyncStorage.setItem(CUSTOM_COLORS_STORAGE_KEY, JSON.stringify(currentColors));
+    } catch (error) {
+      console.log('Error saving custom colors:', error);
+    }
+  };
+
+  const setCustomIconColor = (color: string | null) => {
+    setCustomIconColorState(color);
+    saveCustomColors({ iconColor: color });
+  };
+
+  const setCustomSwitchColor = (color: string | null) => {
+    setCustomSwitchColorState(color);
+    saveCustomColors({ switchColor: color });
+  };
+
+  const setCustomContainerColor = (color: string | null) => {
+    setCustomContainerColorState(color);
+    saveCustomColors({ containerColor: color });
+  };
 
   const setTheme = (newTheme: Theme) => {
     setThemeState(newTheme);
@@ -67,7 +122,18 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   const colors = theme === 'dark' ? DarkColors : LightColors;
 
   return (
-    <ThemeContext.Provider value={{ theme, colors, toggleTheme, setTheme }}>
+    <ThemeContext.Provider value={{ 
+      theme, 
+      colors, 
+      toggleTheme, 
+      setTheme,
+      customIconColor,
+      setCustomIconColor,
+      customSwitchColor,
+      setCustomSwitchColor,
+      customContainerColor,
+      setCustomContainerColor
+    }}>
       {children}
     </ThemeContext.Provider>
   );
