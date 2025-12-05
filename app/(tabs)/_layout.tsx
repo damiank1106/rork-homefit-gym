@@ -1,5 +1,5 @@
 import { Tabs } from 'expo-router';
-import { Home, Dumbbell, User, BarChart3, Settings } from 'lucide-react-native';
+import { Home, Dumbbell, User, BarChart3, Settings2 } from 'lucide-react-native';
 import React, { useMemo } from 'react';
 import { StyleSheet, View, useWindowDimensions, Platform } from 'react-native';
 import { useTheme } from '@/src/context/ThemeContext';
@@ -77,7 +77,7 @@ export default function TabLayout() {
           tabBarLabel: showSettingsLabel ? 'Settings' : () => null,
           tabBarIcon: ({ color, size }) => (
             <View style={styles.iconWrapper}>
-              <Settings size={size} color={color} strokeWidth={2.2} />
+              <Settings2 size={size} color={color} strokeWidth={2.2} />
             </View>
           ),
         }}

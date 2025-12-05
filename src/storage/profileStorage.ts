@@ -27,7 +27,8 @@ export async function loadUserProfile(): Promise<UserProfile | null> {
     }
     
     // Validate that stored data looks like JSON before parsing
-    if (!storedData.startsWith('{') && !storedData.startsWith('[')) {
+    // [object Object] starts with [ but is not valid JSON
+    if (storedData === '[object Object]' || (!storedData.startsWith('{') && !storedData.startsWith('['))) {
       console.error('Invalid JSON format in storage:', storedData.substring(0, 50));
       await AsyncStorage.removeItem(PROFILE_STORAGE_KEY);
       return null;

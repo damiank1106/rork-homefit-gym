@@ -53,6 +53,8 @@ interface ColorPickerModalProps {
 }
 
 const ColorPickerModal = ({ visible, onClose, onSelect, selectedColor, title, colors }: ColorPickerModalProps) => {
+  const styles = useMemo(() => createStyles(colors), [colors]);
+
   return (
     <Modal
       visible={visible}

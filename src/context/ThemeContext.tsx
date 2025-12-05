@@ -57,7 +57,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
 
       // Load custom colors
       const storedColors = await AsyncStorage.getItem(CUSTOM_COLORS_STORAGE_KEY);
-      if (storedColors) {
+      if (storedColors && storedColors !== 'null' && storedColors !== 'undefined' && storedColors !== '[object Object]') {
         const parsedColors: CustomColors = JSON.parse(storedColors);
         setCustomIconColorState(parsedColors.iconColor || null);
         setCustomSwitchColorState(parsedColors.switchColor || null);
