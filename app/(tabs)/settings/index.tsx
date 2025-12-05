@@ -6,6 +6,7 @@ import {
   Switch,
   ScrollView,
   Pressable,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -21,19 +22,10 @@ import {
 import { useTheme } from '@/src/context/ThemeContext';
 import { clearUserProfile } from '@/src/storage/profileStorage';
 import { clearAllLogs } from '@/src/storage/historyStorage'; // Optional debug
-import { useRouter } from 'expo-router';
 
 export default function SettingsScreen() {
   const { theme, toggleTheme, colors } = useTheme();
-  const router = useRouter();
   const styles = useMemo(() => createStyles(colors), [colors]);
-
-  const handleSignOut = () => {
-    // Clear data or just navigate?
-    // Since there's no auth, maybe just clear profile?
-    // "Let user archive or delete it".
-    // I'll just keep it simple.
-  };
 
   const SettingsItem = ({
     icon: Icon,
@@ -122,7 +114,22 @@ export default function SettingsScreen() {
                 label="Reset Data"
                 color={colors.error}
                 onPress={() => {
-                   // Optional implementation
+                  Alert.alert(
+                    "Reset Data",
+                    "Are you sure you want to delete all your data? This action cannot be undone.",
+                    [
+                      { text: "Cancel", style: "cancel" },
+                      {
+                        text: "Reset",
+                        style: "destructive",
+                        onPress: async () => {
+                          await clearAllLogs();
+                          await clearUserProfile();
+                          Alert.alert("Success", "All data has been reset.");
+                        }
+                      }
+                    ]
+                  );
                 }}
               />
             </View>

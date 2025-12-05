@@ -64,3 +64,13 @@ export async function deleteExerciseLog(logId: string): Promise<void> {
     console.error('Error deleting exercise log:', error);
   }
 }
+
+export async function clearAllLogs(): Promise<void> {
+  try {
+    console.log('Clearing all exercise logs...');
+    await AsyncStorage.removeItem(HISTORY_STORAGE_KEY);
+    console.log('All exercise logs cleared successfully');
+  } catch (error) {
+    console.error('Error clearing all exercise logs:', error);
+  }
+}
