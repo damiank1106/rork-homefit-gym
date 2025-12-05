@@ -275,6 +275,7 @@ export default function ProfileScreen() {
   );
 
   const calculatedAge = calculateAge(birthdayInput);
+  const profileAge = profile.birthday ? calculateAge(profile.birthday) : null;
   const ageHelperText = birthdayInput
     ? calculatedAge !== null
       ? `Age: ${calculatedAge} years`
@@ -374,6 +375,11 @@ export default function ProfileScreen() {
                   </View>
                   <Text style={styles.profileName}>Fitness Enthusiast</Text>
                   <Text style={styles.profileEmail}>Welcome to HomeFit Gym</Text>
+                  <Text style={styles.profileMeta}>
+                    {profileAge !== null
+                      ? `Age: ${profileAge} years`
+                      : 'Add your birthday to calculate your age'}
+                  </Text>
                 </View>
 
                 <View style={styles.section}>
@@ -658,6 +664,11 @@ const styles = StyleSheet.create({
   profileEmail: {
     fontSize: 15,
     color: Colors.textSecondary,
+  },
+  profileMeta: {
+    marginTop: 6,
+    fontSize: 14,
+    color: Colors.textLight,
   },
   section: {
     marginBottom: 28,
